@@ -52,6 +52,8 @@ model_client = Client(
     timeout=300,
 )
 
+NEW_CHAT_TITLE = "New Chat"
+
 # Each key is also a slash command: a message starting with /fix gets the fix instruction
 TASK_PROMPTS: dict[str, str] = {
     "general": "Solve the request precisely. If anything is ambiguous, ask one clarifying question, otherwise produce the final result.",
@@ -100,6 +102,20 @@ class MessageOut(BaseModel):
     content: str
     reasoning: str | None
     created_at: datetime
+
+
+class ConversationRename(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(max_length=120)
+
+    @field_validator("title")
+    @classmethod
+    def trimmed_and_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("the title is empty")
+        return value
 
 
 class ConversationOut(BaseModel):
@@ -183,7 +199,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in settings.cors_origins.split(",")],
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
@@ -223,7 +239,7 @@ def list_conversations(
 
 @app.post("/api/v1/conversations", response_model=ConversationOut, status_code=201)
 def create_conversation(session: Session = Depends(get_session)):
-    conversation = Conversation(title="New Chat")
+    conversation = Conversation(title=NEW_CHAT_TITLE)
     session.add(conversation)
     session.commit()
     return conversation
@@ -235,6 +251,18 @@ def get_conversation(conversation_id: uuid.UUID, session: Session = Depends(get_
     if conversation is None:
         return not_found()
     return ConversationDetail.model_validate(conversation)
+
+
+@app.patch("/api/v1/conversations/{conversation_id}", response_model=ConversationOut)
+def rename_conversation(
+    conversation_id: uuid.UUID, body: ConversationRename, session: Session = Depends(get_session)
+):
+    conversation = session.get(Conversation, conversation_id)
+    if conversation is None:
+        return not_found()
+    conversation.title = body.title
+    session.commit()
+    return conversation
 
 
 @app.delete("/api/v1/conversations/{conversation_id}", status_code=204)
@@ -273,7 +301,8 @@ def create_message(
 
     # The question is saved only once the model has started answering, so a failed request
     # leaves nothing behind
-    if not conversation.messages:
+    # A title the user already set is kept; only the placeholder is replaced by the question
+    if not conversation.messages and conversation.title == NEW_CHAT_TITLE:
         conversation.title = split_command(body.content)[1].strip().splitlines()[0][:80]
     conversation.updated_at = func.now()
     session.add(Message(conversation_id=conversation.id, role="user", content=body.content))

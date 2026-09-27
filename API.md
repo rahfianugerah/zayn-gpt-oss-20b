@@ -18,7 +18,7 @@ The API behind the Codepilot website. It keeps conversations in the local Postgr
 
 ## 1. API Overview
 
-One caller, the Codepilot website on the same machine. It lists, opens, and deletes saved conversations, and sends a message whose reply streams back while it is written. The model comes from `OLLAMA_MODEL` and the system prompt and sampling from `Modelfile`, never from the request.
+One caller, the Codepilot website on the same machine. It lists, opens, renames, and deletes saved conversations, and sends a message whose reply streams back while it is written. The model comes from `OLLAMA_MODEL` and the system prompt and sampling from `Modelfile`, never from the request.
 
 ## 2. Base Configuration
 
@@ -144,7 +144,7 @@ The resource is the body, with no envelope.
 
 | Status | Name | Usage |
 | :- | :- | :- |
-| `200` | OK | Successful read, or a reply stream that has started |
+| `200` | OK | Successful read or rename, or a reply stream that has started |
 | `201` | Created | Conversation created |
 | `204` | No Content | Conversation deleted |
 | `404` | Not Found | The conversation does not exist, or the route does not |
@@ -167,6 +167,7 @@ No response carries the Ollama key, the database URL, or a stack trace.
 | `GET` | `api/v1/conversations` | List conversations, latest first | No |
 | `POST` | `api/v1/conversations` | Create an empty conversation | No |
 | `GET` | `api/v1/conversations/{conversation_id}` | Read a conversation and its messages | No |
+| `PATCH` | `api/v1/conversations/{conversation_id}` | Rename a conversation | No |
 | `DELETE` | `api/v1/conversations/{conversation_id}` | Delete a conversation and its messages | No |
 | `POST` | `api/v1/conversations/{conversation_id}/messages` | Send a message and stream the reply | No |
 
@@ -181,6 +182,22 @@ Reports that the API is up and which model `OLLAMA_MODEL` names.
 ```
 
 ### Conversations
+
+#### `PATCH api/v1/conversations/{conversation_id}`
+
+Renames a conversation and returns it. The title is trimmed; a conversation renamed before its first question keeps that title instead of taking one from the question.
+
+| Field | Type | Required | Validation | Description |
+| :- | :- | :- | :- | :- |
+| `title` | string | Yes | 1 to 120 characters after trimming | The new name |
+
+```bash
+curl -X PATCH "http://127.0.0.1:8000/api/v1/conversations/0b7c1e2a-4d1f-4f7e-9a53-2f0c8d1b6e44" \
+  -H "Content-Type: application/json" \
+  -d '{ "title": "Pagination bug" }'
+```
+
+Error responses: `422` `VALIDATION_FAILED` for a blank or over-long title, and `404` `CONVERSATION_NOT_FOUND`.
 
 #### `POST api/v1/conversations/{conversation_id}/messages`
 
@@ -320,7 +337,7 @@ Ollama Cloud's own usage limit is the ceiling, and a request past it returns `50
 | Item | Value |
 | :- | :- |
 | Allowed origins | `CORS_ORIGINS`, by default `http://localhost:3000` and `http://127.0.0.1:3000` |
-| Allowed methods | `GET`, `POST`, `DELETE` |
+| Allowed methods | `GET`, `POST`, `PATCH`, `DELETE` |
 | Credentials | `false` |
 
 ### Request Size Limits

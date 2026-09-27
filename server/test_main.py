@@ -142,3 +142,28 @@ def test_settings_refuse_an_empty_model():
 def test_settings_refuse_the_placeholder_key():
     with pytest.raises(ValidationError):
         Settings(ollama_api_key="your_ollama_api_key_here")
+
+
+def test_a_conversation_can_be_renamed(conversation_id):
+    response = api.patch(f"/api/v1/conversations/{conversation_id}", json={"title": "  Pagination bug  "})
+    assert response.status_code == 200
+    assert response.json()["title"] == "Pagination bug"
+    assert api.get(f"/api/v1/conversations/{conversation_id}").json()["title"] == "Pagination bug"
+
+
+def test_a_title_set_before_the_first_question_is_kept(monkeypatch, conversation_id):
+    monkeypatch.setattr(main, "model_client", FakeModel([chunk("Hi")]))
+    api.patch(f"/api/v1/conversations/{conversation_id}", json={"title": "Mine"})
+    send(conversation_id, "What is a generator?")
+    assert api.get(f"/api/v1/conversations/{conversation_id}").json()["title"] == "Mine"
+
+
+@pytest.mark.parametrize("title", ["   ", "x" * 121])
+def test_a_blank_or_long_title_is_rejected(conversation_id, title):
+    response = api.patch(f"/api/v1/conversations/{conversation_id}", json={"title": title})
+    assert response.status_code == 422
+
+
+def test_renaming_an_unknown_conversation_is_404():
+    response = api.patch(f"/api/v1/conversations/{uuid.uuid4()}", json={"title": "Anything"})
+    assert response.status_code == 404
