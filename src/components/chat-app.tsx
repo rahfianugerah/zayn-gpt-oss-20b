@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, BookOpen, Layers, Loader2, Pencil, Slash, Square, User } from "lucide-react";
+import { ArrowUp, BookOpen, Layers, Loader2, Pencil, Slash, Square, User, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChatSidebar } from "@/components/chat-sidebar";
@@ -175,6 +175,31 @@ export function ChatApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isMenuOpen = matches.length > 0;
+
+  // Hides the menu until the text changes, so a typed / stays in the box without reopening it
+  function closeMenu() {
+    setDismissedAt(prompt);
+    setMenuForced(false);
+  }
+
+  function openMenu() {
+    setMenuForced(true);
+    setDismissedAt(null);
+    document.getElementById(PROMPT_ID)?.focus();
+  }
+
+  // A tap or click anywhere but the menu, the box, or the / button closes the menu
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element;
+      if (!target.closest(`#command-panel, #${PROMPT_ID}, #command-button`)) closeMenu();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  });
+
   function changePrompt(value: string) {
     setPrompt(value);
     setHighlight(0);
@@ -213,8 +238,7 @@ export function ChatApp() {
       event.preventDefault();
       pickCommand(matches[activeIndex].name);
     } else if (event.key === "Escape") {
-      setDismissedAt(prompt);
-      setMenuForced(false);
+      closeMenu();
     }
   }
 
@@ -398,13 +422,32 @@ export function ChatApp() {
                 </SystemMessage>
               )}
 
-              {matches.length > 0 && (
+              {isMenuOpen && (
+                // Capped to the space a phone has above the box; the list scrolls past that
+                <div
+                  id="command-panel"
+                  className="bg-popover absolute bottom-full left-0 z-20 mb-2 flex max-h-[min(22rem,45dvh)] w-full flex-col overflow-hidden rounded-xl border shadow-md sm:max-w-sm"
+                >
+                  <div className="flex shrink-0 items-center justify-between border-b py-1 pr-1 pl-3">
+                    <span className="text-muted-foreground text-xs font-medium">Commands</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Close Commands"
+                      title="Close (Esc)"
+                      className="size-8 pointer-coarse:size-11"
+                      // Keeps the focus in the box, where the cursor was
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={closeMenu}
+                    >
+                      <X />
+                    </Button>
+                  </div>
                 <ul
                   id="command-menu"
                   role="listbox"
                   aria-label="Commands"
-                  // Capped to the space a phone has above the box, and scrollable past that
-                  className="bg-popover absolute bottom-full left-0 z-20 mb-2 max-h-[min(22rem,45dvh)] w-full overflow-y-auto overscroll-contain rounded-xl border p-1 shadow-md sm:max-w-sm"
+                  className="overflow-y-auto overscroll-contain p-1"
                 >
                   {matches.map((command, index) => (
                     <li
@@ -428,6 +471,7 @@ export function ChatApp() {
                     </li>
                   ))}
                 </ul>
+                </div>
               )}
 
               <PromptInput
@@ -441,9 +485,9 @@ export function ChatApp() {
                   <PromptInputTextarea
                     id={PROMPT_ID}
                     aria-label="Message"
-                    aria-expanded={matches.length > 0}
+                    aria-expanded={isMenuOpen}
                     aria-controls="command-menu"
-                    aria-activedescendant={matches.length > 0 ? `command-${matches[activeIndex].name}` : undefined}
+                    aria-activedescendant={isMenuOpen ? `command-${matches[activeIndex].name}` : undefined}
                     placeholder={
                       STUDY_MODES.find((study) => study.command === mode)?.placeholder ??
                       `Ask ${PRODUCT_NAME}, or type / for commands`
@@ -453,17 +497,15 @@ export function ChatApp() {
                   />
                   <PromptInputActions className="mt-5 flex w-full items-center justify-between gap-2 px-3 pb-3">
                     <div className="flex items-center gap-2">
-                      <PromptInputAction tooltip="Commands">
+                      <PromptInputAction tooltip={isMenuOpen ? "Close commands" : "Commands"}>
                         <Button
-                          variant="outline"
+                          id="command-button"
+                          variant={isMenuOpen ? "default" : "outline"}
                           size="icon"
-                          aria-label="Commands"
+                          aria-label={isMenuOpen ? "Close Commands" : "Commands"}
+                          aria-expanded={isMenuOpen}
                           className="size-9 rounded-full"
-                          onClick={() => {
-                            setMenuForced(true);
-                            setDismissedAt(null);
-                            document.getElementById(PROMPT_ID)?.focus();
-                          }}
+                          onClick={isMenuOpen ? closeMenu : openMenu}
                         >
                           <Slash size={18} />
                         </Button>
