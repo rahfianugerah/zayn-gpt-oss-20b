@@ -1,4 +1,4 @@
-# PRD: Codepilot
+# PRD: Zayn
 
 **Owner:** Naufal Rahfi Anugerah
 **Date:** 2026-09-27
@@ -6,7 +6,7 @@
 
 ## Problem
 
-Codepilot answered coding questions by running Qwen2.5-Coder-7B-Instruct on the owner's own machine. That meant downloading a 4.7 GB model, building it locally from the Modelfile, and keeping it loaded in memory while working. On the owner's hardware this is too heavy, so the copilot sat unused: every session started with a download or a model that competed with the editor for memory.
+Zayn, then named Codepilot, answered coding questions by running Qwen2.5-Coder-7B-Instruct on the owner's own machine. That meant downloading a 4.7 GB model, building it locally from the Modelfile, and keeping it loaded in memory while working. On the owner's hardware this is too heavy, so the copilot sat unused: every session started with a download or a model that competed with the editor for memory.
 
 Every conversation was also lost on reload. An answer worth keeping had to be copied out by hand before closing the tab, and a question asked yesterday could not be picked up again today.
 
@@ -23,19 +23,19 @@ One person: the owner, using it daily as a personal coding assistant while writi
 - Keep the conversation going: follow-up questions see the earlier turns.
 - Come back to an earlier conversation from a sidebar, grouped by when it happened, and delete one that is no longer needed.
 - Rename a conversation, from the sidebar or from its name above the chat, when the title taken from the first question does not say what it is about.
+- Recognize the copilot by its name, Zayn, and its mascot, shown as the logo beside the name, beside every reply, and in the browser tab.
 - Run the whole thing from a fresh clone without downloading or building a model. The model runs in the cloud and the owner supplies one access key.
 
 ## What Is Not Built
 
 - **No local or offline model.** Running the model locally is the problem this change removes. The old local path is dropped rather than kept beside the cloud one.
-- **No Qwen model in this phase.** The owner chose Ollama Cloud on 2026-09-27, and Ollama Cloud serves no Qwen model. The copilot uses a model from Ollama Cloud's own catalog with Codepilot's instructions from the Modelfile.
+- **No Qwen model in this phase.** The owner chose Ollama Cloud on 2026-09-27, and Ollama Cloud serves no Qwen model. The copilot uses a model from Ollama Cloud's own catalog with Zayn's instructions from the Modelfile.
 - **No fine-tuned or custom model weights.** Nothing is trained.
 - **No accounts or sign-in.** One person uses it on their own machine.
 - **No sync between machines.** Conversations live in the database on the owner's machine and nowhere else.
 - **No file or project upload.** Code is pasted into the message.
 - **No rating, editing, or regenerating of a message.** A reply is kept as it was written.
 - **No deployment in this phase.** It runs on the owner's machine only.
-- **No mascot or logo.** The old mascot is removed and the new one is not ready. The product name carries the brand until it is.
 
 ## Success Measure
 
@@ -63,4 +63,3 @@ One person: the owner, using it daily as a personal coding assistant while writi
 
 - Which Ollama Cloud model to use: `gpt-oss:20b`, the smallest and fastest, or `kimi-k2.7-code`, stronger at code and heavier on the usage limit? Owner to decide, per machine, without a code change. The example configuration starts on `gpt-oss:20b`.
 - Does the Ollama Cloud free usage limit cover daily use, or is a paid plan needed? Owner to decide after the first month of use.
-- The new mascot, and where it appears. Owner to decide.
