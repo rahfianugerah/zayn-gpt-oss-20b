@@ -114,8 +114,22 @@ const INITIAL_COMPONENTS: Partial<Components> = {
           </div>
           <CopyButton text={text} label="Copy Code" size="icon" className="h-8 w-8" />
         </CodeBlockGroup>
-        <CodeBlockCode code={text} language={language} />
+        {/* On a phone a long line wraps instead of running off the screen, since hidden
+            scrollbars would give no sign that it scrolls sideways */}
+        <CodeBlockCode
+          code={text}
+          language={language}
+          className="max-sm:[&_pre]:whitespace-pre-wrap max-sm:[&_pre]:[overflow-wrap:anywhere]"
+        />
       </CodeBlock>
+    )
+  },
+  // A table wider than the reply scrolls inside its own box instead of pushing the reply wider
+  table: function TableComponent({ children }) {
+    return (
+      <div className="my-4 w-full overflow-x-auto">
+        <table className="my-0 w-full">{children}</table>
+      </div>
     )
   },
 }
@@ -157,8 +171,9 @@ function MarkdownComponent({
   // headings or lists keeps the highlighted code blocks
   const merged = useMemo(() => ({ ...INITIAL_COMPONENTS, ...components }), [components])
 
+  // A long link, identifier, or word breaks where it must, so nothing runs past a narrow screen
   return (
-    <div className={className}>
+    <div className={cn("[overflow-wrap:anywhere]", className)}>
       {blocks.map((block, index) => (
         <MemoizedMarkdownBlock
           key={`${blockId}-block-${index}`}

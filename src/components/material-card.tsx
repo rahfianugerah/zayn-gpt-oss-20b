@@ -26,7 +26,8 @@ const MATERIAL_COMPONENTS: Partial<Components> = {
   li: ({ children }) => (
     <li className="my-1 flex items-start">
       <span className="mt-2.5 mr-2 inline-block size-2 shrink-0 rounded-full bg-orange-500" aria-hidden="true" />
-      <span>{children}</span>
+      {/* min-w-0 lets the text shrink inside the flex row, so a long item wraps instead of overflowing */}
+      <span className="min-w-0">{children}</span>
     </li>
   ),
 };
@@ -56,7 +57,7 @@ export function MaterialCard({ content, isStreaming }: { content: string; isStre
   }
 
   return (
-    <div className={cn("w-full rounded-xl border p-6 transition-colors", isDark ? DARK_TOKENS : "bg-white text-black")}>
+    <div className={cn("w-full rounded-xl border p-4 transition-colors sm:p-6", isDark ? DARK_TOKENS : "bg-white text-black")}>
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className="bg-primary/10 text-primary rounded px-2 py-1 text-xs font-medium">Material</div>
