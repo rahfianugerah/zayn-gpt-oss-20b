@@ -33,7 +33,7 @@ On the owner's machine the `chat` database is created and migrated and `npm inst
 
 ```bash
 conda activate ai-project
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 ```
 
 **Run every backend command below inside the activated `ai-project` environment.** Outside it, `pip` installs into a different interpreter and PowerShell answers `The term 'uvicorn' is not recognized`.
@@ -167,7 +167,7 @@ The branch shape is trunk: `main` only. The browser tab shows the product name a
 6. **One repository for the API and the website.** `repository.rules.md` requires separate `-backend` and `-frontend` repositories. This is a local tool with no deployment, so it stays together until it deploys. The cost accepted: split it before the first deployment.
 7. **The API connects as the `postgres` superuser.** `database.rules.md` asks for a least-privilege user. This follows the owner's local setup, and the startup check keeps it on this machine. The cost accepted: a bug in the API has full rights on the local server.
 8. **No authentication.** `security.rules.md` and `auth.rules.md` allow only the health route to be public. There is one user on one machine, and the API listens on `127.0.0.1` only.
-9. **`requirements.txt` instead of `pyproject.toml`.** `stacks.rules.md` declares the Python version in `pyproject.toml`. The existing manifest was kept. The cost accepted: the Python version is stated here rather than enforced.
+9. **One `requirements.txt`, with no `pyproject.toml`.** `stacks.rules.md` declares the Python version in `pyproject.toml` and keeps test tools apart from runtime packages. The owner keeps one requirements file per project, so pytest and its test client sit beside the runtime packages. The cost accepted: the Python version is stated here rather than enforced, and a production install would carry the test tools.
 
 ## License
 
