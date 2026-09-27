@@ -19,6 +19,8 @@ One person: the owner, using it daily as a personal coding assistant while writi
 - Ask the copilot a coding question in the browser and read the reply as it is written.
 - Pick what kind of help is wanted before asking: a general answer, an explanation, a fix, docstrings, a refactor, a review, an optimization, tests, a translation, or a generated artifact.
 - See the model's reasoning, collapsed by default, whenever the model provides it.
+- Generate study material: describe the material needed, and read it back as a formatted document that can be copied or downloaded as Markdown.
+- Test knowledge with flashcards: describe what to be tested on, and study a deck of cards that show a question and flip to its answer, in the way NotebookLM's flashcards work.
 - Copy a reply, or any code block in it, with one action.
 - Keep the conversation going: follow-up questions see the earlier turns.
 - Come back to an earlier conversation from a sidebar, grouped by when it happened, and delete one that is no longer needed.
@@ -35,6 +37,7 @@ One person: the owner, using it daily as a personal coding assistant while writi
 - **No sync between machines.** Conversations live in the database on the owner's machine and nowhere else.
 - **No file or project upload.** Code is pasted into the message.
 - **No rating, editing, or regenerating of a message.** A reply is kept as it was written.
+- **No scored quizzes or spaced repetition.** Flashcards are for self-testing; nothing records which cards were known.
 - **No deployment in this phase.** It runs on the owner's machine only.
 
 ## Success Measure
