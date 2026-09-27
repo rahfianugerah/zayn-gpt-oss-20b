@@ -55,6 +55,7 @@ One person: the owner, using it daily as a personal coding assistant while writi
 - The access key and the database password are supplied by the owner by hand and are never read, printed, or committed by anyone else.
 - Conversations are stored only in the PostgreSQL server on the owner's own machine, in a database named `chat`. Never a cloud or remote database.
 - Running cost stays within what the owner is willing to pay per month for a personal tool.
+- Requests are rate limited, most tightly the ones that call the model, so a stuck loop or a script cannot spend the Ollama usage limit in minutes.
 
 ## Data
 
