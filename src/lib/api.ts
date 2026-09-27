@@ -33,6 +33,14 @@ export const getModel = () => request<{ model: string }>("health").then((health)
 export const listConversations = () =>
   request<{ items: ConversationSummary[] }>("api/v1/conversations?limit=100").then((page) => page.items);
 
+export type SearchResult = { query: string; items: ConversationSummary[]; match: "exact" | "prefix" | "fuzzy" | null };
+
+// The server runs the search ladder; match says which stage answered, and "fuzzy" means close matches
+export const searchConversations = (query: string) =>
+  request<{ items: ConversationSummary[]; match: SearchResult["match"] }>(
+    `api/v1/conversations?limit=100&q=${encodeURIComponent(query)}`,
+  ).then((page): SearchResult => ({ query, ...page }));
+
 export const createConversation = () =>
   request<ConversationSummary>("api/v1/conversations", { method: "POST" });
 

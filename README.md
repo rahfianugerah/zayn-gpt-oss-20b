@@ -98,6 +98,8 @@ An unknown command, such as `/etc/hosts`, is sent as plain text. On an empty cha
 
 **Press the microphone to dictate** instead of typing; what you say is added to the box, and pressing it again stops. It appears only in a browser with speech input, such as Chrome, Edge, or Safari.
 
+**Search your chats from the box under New Chat.** It matches the start of a title first, then similar words anywhere in a title or a message, so a misspelled word still finds the chat; results that are only similar are labelled Close Matches. Escape or the cross clears it.
+
 Rename a conversation by clicking its name above the chat, by double-clicking it in the sidebar, or from the menu beside it. Enter or the check button saves; Escape or the cross cancels.
 
 ## Configuration
