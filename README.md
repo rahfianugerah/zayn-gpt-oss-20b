@@ -93,6 +93,8 @@ Start a message with a slash command to choose what kind of help you want. Type 
 
 An unknown command, such as `/etc/hosts`, is sent as plain text.
 
+Rename a conversation by clicking its name above the chat, or from the menu beside it in the sidebar. Enter saves and Escape cancels.
+
 ## Configuration
 
 Every variable the project reads. Names only; see `.env.example`.

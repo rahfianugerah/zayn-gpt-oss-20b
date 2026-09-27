@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -13,7 +13,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TitleEditor } from "@/components/title-editor";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -44,11 +51,20 @@ type ChatSidebarProps = {
   activeId: string | null;
   onSelect: (id: string) => void;
   onNewChat: () => void;
+  onRename: (id: string, title: string) => void;
   onDelete: (id: string) => void;
 };
 
-export function ChatSidebar({ conversations, activeId, onSelect, onNewChat, onDelete }: ChatSidebarProps) {
+export function ChatSidebar({
+  conversations,
+  activeId,
+  onSelect,
+  onNewChat,
+  onRename,
+  onDelete,
+}: ChatSidebarProps) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ConversationSummary | null>(null);
   const groups = PERIODS.map((period) => ({
     period,
@@ -89,19 +105,43 @@ export function ChatSidebar({ conversations, activeId, onSelect, onNewChat, onDe
             <SidebarMenu>
               {group.items.map((conversation) => (
                 <SidebarMenuItem key={conversation.id}>
-                  <SidebarMenuButton
-                    isActive={conversation.id === activeId}
-                    onClick={() => choose(() => onSelect(conversation.id))}
-                  >
-                    <span>{conversation.title}</span>
-                  </SidebarMenuButton>
-                  <SidebarMenuAction
-                    showOnHover
-                    aria-label={`Delete ${conversation.title}`}
-                    onClick={() => setPendingDelete(conversation)}
-                  >
-                    <Trash2 />
-                  </SidebarMenuAction>
+                  {editingId === conversation.id ? (
+                    <TitleEditor
+                      title={conversation.title}
+                      onSave={(title) => {
+                        setEditingId(null);
+                        onRename(conversation.id, title);
+                      }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <>
+                      <SidebarMenuButton
+                        isActive={conversation.id === activeId}
+                        onClick={() => choose(() => onSelect(conversation.id))}
+                      >
+                        <span>{conversation.title}</span>
+                      </SidebarMenuButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuAction showOnHover aria-label={`Options for ${conversation.title}`}>
+                            <MoreHorizontal />
+                          </SidebarMenuAction>
+                        </DropdownMenuTrigger>
+                        {/* Focus goes to the rename field, not back to this trigger, once the menu closes */}
+                        <DropdownMenuContent side="right" align="start" onCloseAutoFocus={(event) => event.preventDefault()}>
+                          <DropdownMenuItem onSelect={() => setEditingId(conversation.id)}>
+                            <Pencil />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" onSelect={() => setPendingDelete(conversation)}>
+                            <Trash2 />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

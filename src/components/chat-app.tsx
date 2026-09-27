@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowUp, Loader2, Slash, Square, User } from "lucide-react";
+import { ArrowUp, Loader2, Pencil, Slash, Square, User } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { CopyButton } from "@/components/copy-button";
+import { TitleEditor } from "@/components/title-editor";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ChatContainerContent, ChatContainerRoot } from "@/components/ui/chat-container";
@@ -24,6 +25,7 @@ import {
   type ConversationSummary,
   createConversation,
   deleteConversation,
+  renameConversation,
   describeError,
   getConversation,
   getModel,
@@ -50,6 +52,7 @@ export function ChatApp() {
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [model, setModel] = useState<string | null>(null);
   const [highlight, setHighlight] = useState(0);
   const [menuForced, setMenuForced] = useState(false);
@@ -118,6 +121,22 @@ export function ChatApp() {
     setChat(NEW_CHAT);
     setError(null);
     writeUrl(null);
+  }
+
+  async function renameChat(id: string, title: string) {
+    // Shown at once in the sidebar and the header, and put back if the server refuses it
+    const before = conversations.find((conversation) => conversation.id === id)?.title ?? chat.title;
+    const show = (next: string) => {
+      setConversations((list) => list.map((c) => (c.id === id ? { ...c, title: next } : c)));
+      setChat((current) => (current.id === id ? { ...current, title: next } : current));
+    };
+    show(title);
+    try {
+      await renameConversation(id, title);
+    } catch (err) {
+      show(before);
+      setError(describeError(err));
+    }
   }
 
   async function removeConversation(id: string) {
@@ -254,13 +273,38 @@ export function ChatApp() {
         activeId={chat.id}
         onSelect={selectConversation}
         onNewChat={newChat}
+        onRename={renameChat}
         onDelete={removeConversation}
       />
       <SidebarInset>
         <div className="flex h-dvh flex-col overflow-hidden">
           <header className="bg-background z-10 flex h-16 w-full shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
-            <h1 className="truncate text-base font-semibold">{chat.title}</h1>
+            <h1 className="min-w-0 flex-1 text-base font-semibold">
+              {isEditingTitle && chat.id ? (
+                <TitleEditor
+                  title={chat.title}
+                  className="max-w-md text-base font-semibold"
+                  onSave={(title) => {
+                    setIsEditingTitle(false);
+                    if (chat.id) void renameChat(chat.id, title);
+                  }}
+                  onCancel={() => setIsEditingTitle(false)}
+                />
+              ) : chat.id ? (
+                <button
+                  type="button"
+                  title="Rename conversation"
+                  onClick={() => setIsEditingTitle(true)}
+                  className="group hover:bg-muted flex max-w-full items-center gap-2 rounded-md px-2 py-1"
+                >
+                  <span className="truncate">{chat.title}</span>
+                  <Pencil className="text-muted-foreground size-3.5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true" />
+                </button>
+              ) : (
+                <span className="truncate px-2">{chat.title}</span>
+              )}
+            </h1>
           </header>
 
           <div className="relative flex-1 overflow-y-auto">

@@ -39,6 +39,13 @@ export const createConversation = () =>
 export const getConversation = (id: string) =>
   request<{ title: string; messages: ChatMessage[] }>(`api/v1/conversations/${id}`);
 
+export const renameConversation = (id: string, title: string) =>
+  request<ConversationSummary>(`api/v1/conversations/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+
 export const deleteConversation = (id: string) =>
   request<void>(`api/v1/conversations/${id}`, { method: "DELETE" });
 
