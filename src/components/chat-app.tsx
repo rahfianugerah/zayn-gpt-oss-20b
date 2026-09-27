@@ -16,6 +16,7 @@ import {
   PromptInputActions,
   PromptInputTextarea,
 } from "@/components/ui/prompt-input";
+import { PromptSuggestion } from "@/components/ui/prompt-suggestion";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ui/reasoning";
 import { ScrollButton } from "@/components/ui/scroll-button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -32,7 +33,7 @@ import {
   listConversations,
   streamReply,
 } from "@/lib/api";
-import { COMMANDS, PRODUCT_NAME, splitCommand } from "@/lib/product";
+import { COMMANDS, PRODUCT_NAME, SUGGESTIONS, splitCommand } from "@/lib/product";
 import { cn } from "@/lib/utils";
 
 type Chat = { id: string | null; title: string; messages: ChatMessage[] };
@@ -165,6 +166,16 @@ export function ChatApp() {
     setPrompt(value);
     setHighlight(0);
     if (!value.startsWith("/")) setMenuForced(false);
+  }
+
+  function applySuggestion(prompt: string) {
+    changePrompt(prompt);
+    // After the box has the new text, put the cursor at its end, ready for the code to be pasted
+    requestAnimationFrame(() => {
+      const box = document.getElementById(PROMPT_ID) as HTMLTextAreaElement | null;
+      box?.focus();
+      box?.setSelectionRange(prompt.length, prompt.length);
+    });
   }
 
   function pickCommand(name: string) {
@@ -325,6 +336,13 @@ export function ChatApp() {
                     <p className="text-muted-foreground text-sm">
                       {model ? `Running ${model} on Ollama Cloud. ` : ""}Type / for commands.
                     </p>
+                    <div className="mt-6 flex max-w-2xl flex-wrap justify-center gap-2">
+                      {SUGGESTIONS.map((suggestion) => (
+                        <PromptSuggestion key={suggestion.label} onClick={() => applySuggestion(suggestion.prompt)}>
+                          {suggestion.label}
+                        </PromptSuggestion>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   chat.messages.map((message, index) => (

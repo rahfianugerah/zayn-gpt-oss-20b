@@ -14,6 +14,19 @@ export const COMMANDS = [
   { name: "generate", description: "Generate exactly the format asked for" },
 ] as const;
 
+// Shown on an empty chat. Most start with a command, which teaches it, and end on a new line,
+// ready for the code to be pasted
+export const SUGGESTIONS = [
+  { label: "Explain async/await", prompt: "/explain How does async/await work in JavaScript, and when do two awaits run in parallel?" },
+  { label: "Fix an IndexError", prompt: "/fix My Python loop raises IndexError: list index out of range. Here is the code:\n" },
+  { label: "Review my function", prompt: "/review Review this function for bugs, edge cases, and naming:\n" },
+  { label: "Write pytest tests", prompt: "/testgen Write pytest tests, including the edge cases, for this function:\n" },
+  { label: "Refactor nested ifs", prompt: "/refactor Turn these nested if-else blocks into early returns:\n" },
+  { label: "Python to TypeScript", prompt: "/translate Translate this Python function to TypeScript:\n" },
+  { label: "Find duplicate rows in SQL", prompt: "Write a PostgreSQL query that finds duplicate emails in a users table." },
+  { label: "Explain a regex", prompt: "/explain Explain what each part of this regular expression matches:\n" },
+] as const;
+
 /** Split a leading known command off a message, mirroring split_command on the server. */
 export function splitCommand(content: string): [string | null, string] {
   const match = /^\/(\w+)\b\s*/.exec(content);

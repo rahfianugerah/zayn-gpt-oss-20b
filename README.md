@@ -91,7 +91,7 @@ Start a message with a slash command to choose what kind of help you want. Type 
 | `/translate` | Translates to another language |
 | `/generate` | Generates exactly the format asked for |
 
-An unknown command, such as `/etc/hosts`, is sent as plain text.
+An unknown command, such as `/etc/hosts`, is sent as plain text. On an empty chat, a suggestion such as **Fix an IndexError** fills the box with a starting question and its command, ready for your code.
 
 Rename a conversation by clicking its name above the chat, by double-clicking it in the sidebar, or from the menu beside it. Enter or the check button saves; Escape or the cross cancels.
 
