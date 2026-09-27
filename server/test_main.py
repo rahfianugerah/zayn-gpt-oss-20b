@@ -9,6 +9,7 @@ import pytest
 # every test that sends a message, so nothing here reaches Ollama Cloud. DATABASE_URL comes from
 # the environment or .env, and each test deletes the conversations it creates.
 os.environ["OLLAMA_API_KEY"] = "test-key"
+os.environ["OLLAMA_MODEL"] = "test-model"
 
 import main
 from config import Settings
@@ -52,15 +53,16 @@ def send(conversation_id: str, content: str):
     return api.post(f"/api/v1/conversations/{conversation_id}/messages", json={"content": content})
 
 
-def test_modelfile_drives_the_request():
+def test_the_model_comes_from_the_environment_and_the_prompt_from_the_modelfile():
+    assert main.MODEL == "test-model"
     assert "You are Codepilot" in main.SYSTEM_PROMPT
     assert main.OPTIONS["temperature"] == 0.2
     assert main.OPTIONS["top_k"] == 40
 
 
 def test_modelfile_parser_collects_repeated_stop_values():
-    text = 'FROM m\nSYSTEM """\nHi\n"""\nPARAMETER stop "<a>"\nPARAMETER stop "<b>"\nPARAMETER num_ctx 8192\n'
-    assert main.load_modelfile(text) == ("m", "Hi", {"stop": ["<a>", "<b>"], "num_ctx": 8192})
+    text = 'SYSTEM """\nHi\n"""\nPARAMETER stop "<a>"\nPARAMETER stop "<b>"\nPARAMETER num_ctx 8192\n'
+    assert main.load_modelfile(text) == ("Hi", {"stop": ["<a>", "<b>"], "num_ctx": 8192})
 
 
 def test_health():
@@ -130,6 +132,11 @@ def test_a_message_with_no_question_is_rejected(conversation_id, content):
 def test_settings_refuse_a_remote_database():
     with pytest.raises(ValidationError):
         Settings(database_url="postgresql+psycopg://user:secret@db.example.com:5432/chat")
+
+
+def test_settings_refuse_an_empty_model():
+    with pytest.raises(ValidationError):
+        Settings(ollama_model="")
 
 
 def test_settings_refuse_the_placeholder_key():

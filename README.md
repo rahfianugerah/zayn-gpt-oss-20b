@@ -44,7 +44,7 @@ pip install -r requirements-dev.txt
 cp .env.example .env
 ```
 
-Set `OLLAMA_API_KEY` to a key from ollama.com under Settings > Keys, and put the local PostgreSQL password into `DATABASE_URL`. **The server refuses to start while `OLLAMA_API_KEY` still holds its placeholder, or while `DATABASE_URL` points anywhere but `127.0.0.1`, `localhost`, or `::1`.** That is deliberate: conversations may only live in the PostgreSQL server on this machine.
+Set `OLLAMA_API_KEY` to a key from ollama.com under Settings > Keys, pick the model in `OLLAMA_MODEL`, and put the local PostgreSQL password into `DATABASE_URL`. **The server refuses to start while `OLLAMA_API_KEY` still holds its placeholder, while `OLLAMA_MODEL` is unset, or while `DATABASE_URL` points anywhere but `127.0.0.1`, `localhost`, or `::1`.** That is deliberate: the model is chosen per machine and never falls back to one written in the code, and conversations may only live in the PostgreSQL server on this machine.
 
 **3. Database.** Create the `chat` database on the local server, then build the tables.
 
@@ -96,11 +96,12 @@ Every variable the project reads. Names only; see `.env.example`.
 | Variable | Required | Description |
 | :- | :- | :- |
 | `OLLAMA_API_KEY` | Yes | The Ollama Cloud key the API sends with every model request. Never reaches the browser |
+| `OLLAMA_MODEL` | Yes | The model Ollama Cloud runs, such as `gpt-oss:20b` or `kimi-k2.7-code`. No default |
 | `DATABASE_URL` | Yes | The local PostgreSQL connection, `postgresql+psycopg://...@127.0.0.1:5432/chat` |
 | `CORS_ORIGINS` | No | Comma-separated browser origins allowed to call the API. Defaults to the website on port 3000 |
 | `NEXT_PUBLIC_COPILOT_URL` | No | The API origin the website calls, built into the page. Defaults to `http://127.0.0.1:8000` |
 
-**The model, the system prompt, and the sampling settings live in `Modelfile`, not in `.env`.** The API reads `FROM`, `SYSTEM`, and every `PARAMETER` from it at startup and sends them with each request. To switch model, change `FROM` to another model Ollama Cloud serves, such as `kimi-k2.7-code`, and restart the API.
+**The model is chosen in `.env`; the system prompt and sampling live in `Modelfile`.** To switch model, set `OLLAMA_MODEL` to another model Ollama Cloud serves and restart the API; the list is at `https://ollama.com/search?c=cloud`. The API reads `SYSTEM` and every `PARAMETER` from the Modelfile at startup and sends them with each request.
 
 ## Data
 
@@ -118,7 +119,7 @@ Every message and the earlier turns of its conversation are sent to Ollama Cloud
 ## Project Structure
 
 ```text
-Modelfile                 the model, system prompt, and sampling, read by the API
+Modelfile                 the system prompt and sampling, read by the API
 server/
   main.py                 routes, slash commands, and the Ollama Cloud stream
   config.py               settings, with the local-only database check

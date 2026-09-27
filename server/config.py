@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     )
 
     ollama_api_key: SecretStr
+    # No default on purpose: which model runs is chosen per machine in .env, never in the code
+    ollama_model: str = Field(min_length=1)
     database_url: SecretStr
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 

@@ -28,9 +28,8 @@ logging.basicConfig(
 logger = logging.getLogger("codepilot")
 
 
-def load_modelfile(text: str) -> tuple[str, str, dict[str, object]]:
-    """Read the model, the system prompt, and the sampling options out of an Ollama Modelfile."""
-    model = re.search(r"^FROM\s+(\S+)", text, re.M).group(1)
+def load_modelfile(text: str) -> tuple[str, dict[str, object]]:
+    """Read the system prompt and the sampling options out of an Ollama Modelfile."""
     system = re.search(r'^SYSTEM\s+"""(.*?)"""', text, re.M | re.S).group(1).strip()
     options: dict[str, object] = {}
     for name, raw in re.findall(r"^PARAMETER\s+(\w+)\s+(.+?)\s*$", text, re.M):
@@ -39,12 +38,13 @@ def load_modelfile(text: str) -> tuple[str, str, dict[str, object]]:
             options.setdefault("stop", []).append(value)
         else:
             options[name] = value
-    return model, system, options
+    return system, options
 
 
-# The Modelfile stays the one place the prompt and sampling are tuned, and the same file still
-# works with `ollama create`. Ollama Cloud accepts every Modelfile parameter per request.
-MODEL, SYSTEM_PROMPT, OPTIONS = load_modelfile((ROOT / "Modelfile").read_text(encoding="utf-8"))
+# The model comes from OLLAMA_MODEL, so each machine picks its own. The Modelfile stays the one
+# place the prompt and sampling are tuned; Ollama Cloud accepts every parameter per request.
+MODEL = settings.ollama_model
+SYSTEM_PROMPT, OPTIONS = load_modelfile((ROOT / "Modelfile").read_text(encoding="utf-8"))
 
 model_client = Client(
     host="https://ollama.com",

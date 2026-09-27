@@ -60,6 +60,6 @@ One person: the owner, using it daily as a personal coding assistant while writi
 
 ## Open Questions
 
-- Which Ollama Cloud model to use: `gpt-oss:20b`, the smallest and fastest, or `kimi-k2.7-code`, stronger at code and heavier on the usage limit? Owner to decide. Starts on `gpt-oss:20b`.
+- Which Ollama Cloud model to use: `gpt-oss:20b`, the smallest and fastest, or `kimi-k2.7-code`, stronger at code and heavier on the usage limit? Owner to decide, per machine, without a code change. The example configuration starts on `gpt-oss:20b`.
 - Does the Ollama Cloud free usage limit cover daily use, or is a paid plan needed? Owner to decide after the first month of use.
 - The new mascot, and where it appears. Owner to decide.

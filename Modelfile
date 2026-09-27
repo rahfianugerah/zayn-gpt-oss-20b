@@ -1,4 +1,4 @@
-FROM gpt-oss:20b
+# The model is chosen by OLLAMA_MODEL in .env. This file holds the prompt and the sampling.
 
 SYSTEM """
 You are Codepilot, a genius, smart, faster coding copilot.

@@ -18,7 +18,7 @@ The API behind the Codepilot website. It keeps conversations in the local Postgr
 
 ## 1. API Overview
 
-One caller, the Codepilot website on the same machine. It lists, opens, and deletes saved conversations, and sends a message whose reply streams back while it is written. The model, system prompt, and sampling come from `Modelfile`, not from the request.
+One caller, the Codepilot website on the same machine. It lists, opens, and deletes saved conversations, and sends a message whose reply streams back while it is written. The model comes from `OLLAMA_MODEL` and the system prompt and sampling from `Modelfile`, never from the request.
 
 ## 2. Base Configuration
 
@@ -174,7 +174,7 @@ No response carries the Ollama key, the database URL, or a stack trace.
 
 #### `GET /health`
 
-Reports that the API is up and which model the Modelfile names.
+Reports that the API is up and which model `OLLAMA_MODEL` names.
 
 ```json
 { "status": "ok", "model": "gpt-oss:20b" }
