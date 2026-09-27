@@ -16,25 +16,28 @@ function ScrollButton({
   className,
   variant = "outline",
   size = "sm",
+  children = "Scroll Down",
   ...props
 }: ScrollButtonProps) {
   const { isAtBottom, scrollToBottom } = useStickToBottomContext()
 
+  // A pill with a label rather than a bare circle, so what it does is readable at a glance
   return (
     <Button
       variant={variant}
       size={size}
       className={cn(
-        "h-10 w-10 rounded-full transition-all duration-150 ease-out",
+        "h-9 gap-1.5 rounded-full px-4 transition-all duration-150 ease-out",
         !isAtBottom
-          ? "translate-y-0 scale-100 opacity-100"
+          ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
           : "pointer-events-none translate-y-4 scale-95 opacity-0",
         className
       )}
       onClick={() => scrollToBottom()}
       {...props}
     >
-      <ChevronDown className="h-5 w-5" />
+      <ChevronDown className="size-4" />
+      {children}
     </Button>
   )
 }

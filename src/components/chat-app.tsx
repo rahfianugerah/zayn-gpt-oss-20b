@@ -355,8 +355,9 @@ export function ChatApp() {
                   ))
                 )}
               </ChatContainerContent>
-              <div className="absolute bottom-4 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-end px-5">
-                <ScrollButton className="shadow-sm" aria-label="Scroll to Latest" />
+              {/* The strip lets clicks through to the messages under it; only the pill catches them */}
+              <div className="pointer-events-none absolute bottom-4 left-1/2 flex w-full max-w-3xl -translate-x-1/2 justify-center px-5">
+                <ScrollButton className="shadow-sm" />
               </div>
             </ChatContainerRoot>
           </div>
