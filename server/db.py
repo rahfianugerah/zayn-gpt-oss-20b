@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Computed,
     DateTime,
     ForeignKey,
     Identity,
@@ -37,6 +38,10 @@ class Conversation(Base):
         DateTime(timezone=True), server_default=func.now(), index=True
     )
     messages: Mapped[list["Message"]] = relationship(order_by="Message.id")
+    # Search keys the database computes on write, per search.component.md. Deferred, so a normal
+    # read never loads them.
+    search_norm: Mapped[str | None] = mapped_column(Text, Computed("norm(title)", persisted=True), deferred=True)
+    search_fon: Mapped[str | None] = mapped_column(Text, Computed("fon(title)", persisted=True), deferred=True)
 
 
 class Message(Base):
@@ -53,3 +58,5 @@ class Message(Base):
     # The model's thinking, for a model that returns it apart from the answer
     reasoning: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Only the fuzzy stage of the search reads a message, so it needs the phonetic key alone
+    search_fon: Mapped[str | None] = mapped_column(Text, Computed("fon(content)", persisted=True), deferred=True)

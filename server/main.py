@@ -5,6 +5,7 @@ import re
 import sys
 import uuid
 from datetime import datetime
+from typing import Literal
 
 import httpx
 from fastapi import Depends, FastAPI, Query, Request, Response
@@ -14,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from ollama import Client, ResponseError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import Select, delete, func, or_, select, text, update
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException
 
@@ -151,11 +152,46 @@ class ConversationPage(BaseModel):
     total: int
     limit: int
     offset: int
+    # Which stage of the search ladder answered, so the website can say when matches are only close
+    match: Literal["exact", "prefix", "fuzzy"] | None = None
 
 
 def get_session():
     with SessionLocal() as session:
         yield session
+
+
+def search_stages(session: Session, query: str) -> list[tuple[str, object, object]] | None:
+    """The search ladder from search.component.md: exact, then prefix, then fuzzy.
+
+    Returns each stage's name, predicate, and order, or None when the query is too short to search,
+    in which case the list is not filtered at all.
+    """
+    # Normalized by the same SQL function that built the stored key, so both sides fold alike
+    normalized = session.scalar(select(func.norm(query[:100]))) or ""
+    if len(normalized) < 2:
+        return None
+    session.execute(text("SET LOCAL statement_timeout = '3s'"))
+    session.execute(text("SET LOCAL pg_trgm.word_similarity_threshold = 0.3"))
+    key = func.fon(normalized)
+    in_a_message = (
+        select(Message.id)
+        .where(Message.conversation_id == Conversation.id, key.op("<%")(Message.search_fon))
+        .exists()
+    )
+    best_message = (
+        select(func.max(func.word_similarity(key, Message.search_fon)))
+        .where(Message.conversation_id == Conversation.id)
+        .scalar_subquery()
+    )
+    latest = Conversation.updated_at.desc()
+    closest = func.greatest(func.word_similarity(key, Conversation.search_fon), func.coalesce(best_message, 0)).desc()
+    # normalized holds only letters, digits, and spaces, so it carries no LIKE wildcard
+    return [
+        ("exact", Conversation.search_norm == normalized, latest),
+        ("prefix", Conversation.search_norm.like(f"{normalized}%"), latest),
+        ("fuzzy", or_(key.op("<%")(Conversation.search_fon), in_a_message), closest),
+    ]
 
 
 def build_messages(history: list[Message], content: str) -> list[dict[str, str]]:
@@ -243,13 +279,30 @@ def health() -> dict[str, str]:
 def list_conversations(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    q: str | None = Query(None, max_length=200, description="Words from a title or a message"),
     session: Session = Depends(get_session),
 ):
-    total = session.scalar(select(func.count()).select_from(Conversation))
-    items = session.scalars(
-        select(Conversation).order_by(Conversation.updated_at.desc()).limit(limit).offset(offset)
-    ).all()
-    return {"items": items, "total": total, "limit": limit, "offset": offset}
+    page = {"limit": limit, "offset": offset}
+
+    def run(where, order) -> tuple[int, list[Conversation]]:
+        query: Select = select(Conversation)
+        if where is not None:
+            query = query.where(where)
+        total = session.scalar(select(func.count()).select_from(query.subquery()))
+        items = session.scalars(query.order_by(order, Conversation.id).limit(limit).offset(offset)).all()
+        return total, items
+
+    stages = search_stages(session, q) if q else None
+    if stages is None:
+        total, items = run(None, Conversation.updated_at.desc())
+        return {**page, "items": items, "total": total}
+
+    # The first stage that finds anything answers; stages are never merged
+    for match, where, order in stages:
+        total, items = run(where, order)
+        if total:
+            return {**page, "items": items, "total": total, "match": match}
+    return {**page, "items": [], "total": 0}
 
 
 @app.post("/api/v1/conversations", response_model=ConversationOut, status_code=201)

@@ -74,6 +74,7 @@ There is one user on one machine, and the API listens on `127.0.0.1` only.
 | :- | :- | :- | :- | :- |
 | `limit` | Integer | No | `20` | Conversations per page, 1 to 100 |
 | `offset` | Integer | No | `0` | Conversations to skip |
+| `q` | String | No | None | Words from a title or a message, at most 200 characters. Fewer than 2 letters or digits leaves the list unfiltered |
 
 ### Request Body Format
 
@@ -124,9 +125,12 @@ The resource is the body, with no envelope.
   "items": [],
   "total": 0,
   "limit": 20,
-  "offset": 0
+  "offset": 0,
+  "match": null
 }
 ```
+
+`match` says which stage of the search answered: `exact`, `prefix`, or `fuzzy`, or `null` when no search ran. A `fuzzy` match may not contain the words searched for, so the website says the results are close matches.
 
 ### Error Response
 
@@ -304,6 +308,18 @@ Only `GET api/v1/conversations` returns a list, and it is paginated.
 | :- | :- | :- |
 | `limit` | 20 | 100 |
 | `offset` | 0 | none |
+
+### Search
+
+`q` runs the ladder from the search standard, and the first stage that finds anything answers:
+
+| Stage | Matches | On |
+| :- | :- | :- |
+| Exact | The whole title, normalized | The title |
+| Prefix | The start of the title, normalized | The title |
+| Fuzzy | A similar word, with a word similarity of at least 0.3 after the phonetic fold | The title and every message |
+
+Normalizing lowercases, strips accents, and turns punctuation into spaces. The query is cut at 100 characters and runs under a 3 second statement timeout.
 
 ### Filtering
 

@@ -175,3 +175,35 @@ def test_the_study_commands_carry_their_instructions(monkeypatch, conversation_i
     monkeypatch.setattr(main, "model_client", model)
     send(conversation_id, f"/{command} Python decorators")
     assert model.sent[-1]["content"] == f"{main.TASK_PROMPTS[command]}\n\nPython decorators"
+
+
+def search(q: str) -> dict:
+    return api.get("/api/v1/conversations", params={"q": q, "limit": 100}).json()
+
+
+def test_a_one_letter_search_leaves_the_list_unfiltered(conversation_id):
+    page = search("a")
+    assert page["match"] is None
+    assert conversation_id in [item["id"] for item in page["items"]]
+
+
+def test_search_climbs_from_exact_to_prefix_to_fuzzy(conversation_id):
+    api.patch(f"/api/v1/conversations/{conversation_id}", json={"title": "Zqpagination Bug"})
+    for query, stage in [("zqpagination bug", "exact"), ("Zqpagin", "prefix"), ("zqpaginaton", "fuzzy")]:
+        page = search(query)
+        assert page["match"] == stage, query
+        assert conversation_id in [item["id"] for item in page["items"]], query
+
+
+def test_search_finds_a_misspelled_word_inside_a_message(monkeypatch, conversation_id):
+    monkeypatch.setattr(main, "model_client", FakeModel([chunk("Zqdecorators wrap a function in another one")]))
+    send(conversation_id, "What does this do?")
+    page = search("zqdecoraters")
+    assert page["match"] == "fuzzy"
+    assert conversation_id in [item["id"] for item in page["items"]]
+
+
+def test_a_search_that_matches_nothing_returns_nothing():
+    page = search("zzqqxxwwvvyy")
+    assert page["items"] == []
+    assert page["total"] == 0
