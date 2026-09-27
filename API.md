@@ -213,7 +213,7 @@ Request body:
 
 | Field | Type | Required | Validation | Description |
 | :- | :- | :- | :- | :- |
-| `content` | string | Yes | At most 32,000 characters, not blank after the command | The message as typed. A leading `/general`, `/explain`, `/fix`, `/docstring`, `/refactor`, `/review`, `/optimize`, `/testgen`, `/translate`, or `/generate` chooses the task. Any other leading word is plain text |
+| `content` | string | Yes | At most 32,000 characters, not blank after the command | The message as typed. A leading `/general`, `/explain`, `/fix`, `/docstring`, `/refactor`, `/review`, `/optimize`, `/testgen`, `/translate`, `/generate`, `/material`, or `/flashcards` chooses the task. Any other leading word is plain text |
 
 Example request:
 
@@ -247,7 +247,7 @@ Error responses:
 
 Notes:
 
-**Nothing is saved when the request fails with `502`**, so the same question can be sent again. The conversation's title is set from the first question, without its command, cut at 80 characters.
+**Nothing is saved when the request fails with `502`**, so the same question can be sent again. A `/material` reply is Markdown, and a `/flashcards` reply is a JSON array shaped as `[{"front": "...", "back": "..."}]`, which the website turns into a deck. The model is asked for that shape but not forced into it, so a caller parses it defensively. The conversation's title is set from the first question, without its command, cut at 80 characters.
 
 ## 7. Error Handling
 

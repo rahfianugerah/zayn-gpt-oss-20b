@@ -66,6 +66,21 @@ TASK_PROMPTS: dict[str, str] = {
     "testgen": "Add or improve tests covering edge cases and error paths. Use deterministic seeds. Return tests only unless otherwise asked.",
     "translate": "Translate code or text to the target language idiomatically while preserving semantics. Return only the translation.",
     "generate": "Generate the requested artifact in the exact format asked, nothing else.",
+    # The website renders these two as a study document and a flashcard deck, so their shape is fixed
+    "material": (
+        "Write study material in Markdown on what the user describes, at the level they ask for. "
+        "Start with a level-2 heading as the title and one short paragraph saying what it covers. "
+        "Use ### headings for sections, short paragraphs, bullet lists for key points, "
+        "> blockquotes for tips and key takeaways, and fenced code blocks with a language tag for code. "
+        "Link only to official documentation. End with a ### Summary section. "
+        "Return only the Markdown."
+    ),
+    "flashcards": (
+        "Create flashcards that test what the user describes. "
+        'Return only a JSON array, with no prose and no code fence, shaped as [{"front": "...", "back": "..."}]. '
+        "The front is a question or a term, under 20 words. The back is the answer, one to three sentences. "
+        "Make 10 cards unless the user asks for another number, most important ideas first."
+    ),
 }
 
 

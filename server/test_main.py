@@ -167,3 +167,11 @@ def test_a_blank_or_long_title_is_rejected(conversation_id, title):
 def test_renaming_an_unknown_conversation_is_404():
     response = api.patch(f"/api/v1/conversations/{uuid.uuid4()}", json={"title": "Anything"})
     assert response.status_code == 404
+
+
+@pytest.mark.parametrize("command", ["material", "flashcards"])
+def test_the_study_commands_carry_their_instructions(monkeypatch, conversation_id, command):
+    model = FakeModel([chunk("[]")])
+    monkeypatch.setattr(main, "model_client", model)
+    send(conversation_id, f"/{command} Python decorators")
+    assert model.sent[-1]["content"] == f"{main.TASK_PROMPTS[command]}\n\nPython decorators"
