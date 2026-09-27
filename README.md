@@ -27,16 +27,16 @@ It exists because running Qwen2.5-Coder-7B through Ollama on the owner's laptop 
 
 ## Setup
 
-On the owner's machine the `chat` database already exists and is migrated, so start at step 2 and skip the create command in step 3. A fresh clone runs every step.
+On the owner's machine the `chat` database is created and migrated and `npm install` has run, so only steps 1 and 2 remain. A fresh clone runs every step.
 
-**1. Backend environment.** A `.venv` with Python 3.13. Python 3.12 also works; it is what this was verified on.
+**1. Backend environment.** The `ai-project` conda environment, with Python 3.13.
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-source .venv/bin/activate       # macOS and Linux
+conda activate ai-project
 pip install -r requirements-dev.txt
 ```
+
+**Run every backend command below inside the activated `ai-project` environment.** Outside it, `pip` installs into a different interpreter and PowerShell answers `The term 'uvicorn' is not recognized`.
 
 **2. Configuration.** Copy the template and fill it in by hand.
 
@@ -66,7 +66,11 @@ npm install
 Start the API, then the website, each in its own terminal from the repository root.
 
 ```bash
+conda activate ai-project
 uvicorn main:app --app-dir server --host 127.0.0.1 --port 8000 --reload
+```
+
+```bash
 npm run dev
 ```
 
@@ -111,7 +115,7 @@ Every variable the project reads. Names only; see `.env.example`.
 | :- | :- | :- |
 | Conversations and messages | Local PostgreSQL, database `chat` | Not in git. Deleting a conversation in the sidebar removes its messages too |
 | Secrets | `.env` | Gitignored. Only `.env.example` is committed |
-| Python environment | `.venv/` | Gitignored. Produced by step 1 |
+| Python environment | The `ai-project` conda environment | Outside the repository. Managed with conda by the owner |
 | Frontend build | `.next/`, `out/` | Gitignored. Produced by `npm run dev` and `npm run build` |
 
 Every message and the earlier turns of its conversation are sent to Ollama Cloud. Do not paste secrets or personal data into the chat.
@@ -136,7 +140,7 @@ src/
 ## Development
 
 ```bash
-pytest server        # needs the local chat database; each test deletes what it creates
+pytest server        # in ai-project; needs the local chat database, and each test deletes what it creates
 npm run lint
 npm run build        # static site in out/
 ```

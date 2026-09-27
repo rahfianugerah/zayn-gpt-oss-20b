@@ -42,7 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 # python
-.venv/
 *.pyc
 __pycache__/
 .pytest_cache/
