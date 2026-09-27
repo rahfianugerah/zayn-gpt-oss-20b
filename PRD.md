@@ -22,6 +22,7 @@ One person: the owner, using it daily as a personal coding assistant while writi
 - Copy a reply, or any code block in it, with one action.
 - Keep the conversation going: follow-up questions see the earlier turns.
 - Come back to an earlier conversation from a sidebar, grouped by when it happened, and delete one that is no longer needed.
+- Rename a conversation, from the sidebar or from its name above the chat, when the title taken from the first question does not say what it is about.
 - Run the whole thing from a fresh clone without downloading or building a model. The model runs in the cloud and the owner supplies one access key.
 
 ## What Is Not Built
