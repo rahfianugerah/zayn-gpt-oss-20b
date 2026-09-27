@@ -4,7 +4,6 @@ import logging
 import re
 import uuid
 from datetime import datetime
-from typing import Literal
 
 import httpx
 from fastapi import Depends, FastAPI, Query, Request, Response
@@ -48,19 +47,7 @@ model_client = Client(
     timeout=300,
 )
 
-Task = Literal[
-    "general",
-    "explain",
-    "fix",
-    "docstring",
-    "refactor",
-    "review",
-    "optimize",
-    "testgen",
-    "translate",
-    "generate",
-]
-
+# Each key is also a slash command: a message starting with /fix gets the fix instruction
 TASK_PROMPTS: dict[str, str] = {
     "general": "Solve the request precisely. If anything is ambiguous, ask one clarifying question, otherwise produce the final result.",
     "explain": "Explain the code briefly, focusing on intent, complexity hotspots, and pitfalls. Give a short actionable summary.",
@@ -75,16 +62,27 @@ TASK_PROMPTS: dict[str, str] = {
 }
 
 
+COMMAND = re.compile(r"^/(\w+)\b\s*")
+
+
+def split_command(content: str) -> tuple[str, str]:
+    """Split a leading slash command off a message. An unknown one, such as /etc/hosts, is text."""
+    match = COMMAND.match(content)
+    if match and match.group(1) in TASK_PROMPTS:
+        return match.group(1), content[match.end() :]
+    return "general", content
+
+
 class MessageIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    task: Task = "general"
+    # Stored as typed, command included, so a reopened conversation shows which one was used
     content: str = Field(max_length=32_000)
 
     @field_validator("content")
     @classmethod
     def not_blank(cls, value: str) -> str:
-        if not value.strip():
+        if not split_command(value)[1].strip():
             raise ValueError("the message is empty")
         return value
 
@@ -124,12 +122,19 @@ def get_session():
         yield session
 
 
-def build_messages(history: list[Message], task: str, content: str) -> list[dict[str, str]]:
-    """Prepend the system prompt and put the task instruction in front of the new question only."""
+def build_messages(history: list[Message], content: str) -> list[dict[str, str]]:
+    """Prepend the system prompt, and put the command's instruction in front of the new question.
+
+    Earlier questions go to the model without their commands, since only the latest one applies.
+    """
+    task, question = split_command(content)
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
-        *({"role": m.role, "content": m.content} for m in history),
-        {"role": "user", "content": f"{TASK_PROMPTS[task]}\n\n{content}"},
+        *(
+            {"role": m.role, "content": split_command(m.content)[1] if m.role == "user" else m.content}
+            for m in history
+        ),
+        {"role": "user", "content": f"{TASK_PROMPTS[task]}\n\n{question}"},
     ]
 
 
@@ -246,7 +251,7 @@ def create_message(
     if conversation is None:
         return not_found()
 
-    prompt = build_messages(conversation.messages, body.task, body.content)
+    prompt = build_messages(conversation.messages, body.content)
     stream = model_client.chat(model=MODEL, messages=prompt, options=OPTIONS, stream=True)
     try:
         # The client sends the request lazily, so the first chunk is read here, where a failure
@@ -264,7 +269,7 @@ def create_message(
     # The question is saved only once the model has started answering, so a failed request
     # leaves nothing behind
     if not conversation.messages:
-        conversation.title = body.content.strip().splitlines()[0][:80]
+        conversation.title = split_command(body.content)[1].strip().splitlines()[0][:80]
     conversation.updated_at = func.now()
     session.add(Message(conversation_id=conversation.id, role="user", content=body.content))
     session.commit()

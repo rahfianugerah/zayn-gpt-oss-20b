@@ -48,11 +48,8 @@ def conversation_id():
     api.delete(f"/api/v1/conversations/{response.json()['id']}")
 
 
-def send(conversation_id: str, content: str, task: str = "general"):
-    return api.post(
-        f"/api/v1/conversations/{conversation_id}/messages",
-        json={"task": task, "content": content},
-    )
+def send(conversation_id: str, content: str):
+    return api.post(f"/api/v1/conversations/{conversation_id}/messages", json={"content": content})
 
 
 def test_modelfile_drives_the_request():
@@ -76,7 +73,7 @@ def test_a_reply_is_streamed_and_saved_with_its_reasoning(monkeypatch, conversat
     model = FakeModel([chunk(thinking="Plan"), chunk("Hel"), chunk("lo")])
     monkeypatch.setattr(main, "model_client", model)
 
-    response = send(conversation_id, "Fix this\nx = 1", task="fix")
+    response = send(conversation_id, "/fix Fix this\nx = 1")
     assert response.status_code == 200
     events = [json.loads(line) for line in response.text.splitlines()]
     assert events == [{"reasoning": "Plan"}, {"content": "Hel"}, {"content": "lo"}]
@@ -85,12 +82,20 @@ def test_a_reply_is_streamed_and_saved_with_its_reasoning(monkeypatch, conversat
     saved = api.get(f"/api/v1/conversations/{conversation_id}").json()
     assert saved["title"] == "Fix this"
     assert [(m["role"], m["content"], m["reasoning"]) for m in saved["messages"]] == [
-        ("user", "Fix this\nx = 1", None),
+        ("user", "/fix Fix this\nx = 1", None),
         ("assistant", "Hello", "Plan"),
     ]
 
     send(conversation_id, "And now?")
     assert [m["role"] for m in model.sent] == ["system", "user", "assistant", "user"]
+    assert model.sent[1]["content"] == "Fix this\nx = 1"
+    assert model.sent[-1]["content"] == f"{main.TASK_PROMPTS['general']}\n\nAnd now?"
+
+
+def test_a_slash_command_picks_the_task_and_an_unknown_one_stays_text():
+    assert main.split_command("/review\ndef f(): pass") == ("review", "def f(): pass")
+    assert main.split_command("/etc/hosts is empty") == ("general", "/etc/hosts is empty")
+    assert main.split_command("/fixes please") == ("general", "/fixes please")
 
 
 def test_a_failed_model_call_saves_nothing(monkeypatch, conversation_id):
@@ -115,8 +120,9 @@ def test_an_unknown_conversation_is_404():
     assert api.delete(missing).status_code == 404
 
 
-def test_a_blank_message_is_rejected(conversation_id):
-    response = send(conversation_id, "   ")
+@pytest.mark.parametrize("content", ["   ", "/fix", "/review  \n"])
+def test_a_message_with_no_question_is_rejected(conversation_id, content):
+    response = send(conversation_id, content)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "VALIDATION_FAILED"
 
