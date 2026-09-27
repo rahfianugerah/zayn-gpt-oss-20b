@@ -119,8 +119,12 @@ export function ChatSidebar({
                       <SidebarMenuButton
                         isActive={conversation.id === activeId}
                         onClick={() => choose(() => onSelect(conversation.id))}
+                        onDoubleClick={() => setEditingId(conversation.id)}
                       >
-                        <span>{conversation.title}</span>
+                        {/* Keyed by the title, so a new name fades in as the sign it was saved */}
+                        <span key={conversation.title} className="animate-in fade-in-0 truncate duration-500">
+                          {conversation.title}
+                        </span>
                       </SidebarMenuButton>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

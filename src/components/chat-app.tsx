@@ -298,7 +298,9 @@ export function ChatApp() {
                   onClick={() => setIsEditingTitle(true)}
                   className="group hover:bg-muted flex max-w-full items-center gap-2 rounded-md px-2 py-1"
                 >
-                  <span className="truncate">{chat.title}</span>
+                  <span key={chat.title} className="animate-in fade-in-0 truncate duration-500">
+                    {chat.title}
+                  </span>
                   <Pencil className="text-muted-foreground size-3.5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true" />
                 </button>
               ) : (

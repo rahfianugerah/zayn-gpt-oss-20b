@@ -93,7 +93,7 @@ Start a message with a slash command to choose what kind of help you want. Type 
 
 An unknown command, such as `/etc/hosts`, is sent as plain text.
 
-Rename a conversation by clicking its name above the chat, or from the menu beside it in the sidebar. Enter saves and Escape cancels.
+Rename a conversation by clicking its name above the chat, by double-clicking it in the sidebar, or from the menu beside it. Enter or the check button saves; Escape or the cross cancels.
 
 ## Configuration
 
