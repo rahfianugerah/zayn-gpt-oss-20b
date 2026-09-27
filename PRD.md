@@ -6,7 +6,7 @@
 
 ## Problem
 
-Zayn, then named Codepilot, answered coding questions by running Qwen2.5-Coder-7B-Instruct on the owner's own machine. That meant downloading a 4.7 GB model, building it locally from the Modelfile, and keeping it loaded in memory while working. On the owner's hardware this is too heavy, so the copilot sat unused: every session started with a download or a model that competed with the editor for memory.
+Zayn answered coding questions by running Qwen2.5-Coder-7B-Instruct on the owner's own machine. That meant downloading a 4.7 GB model, building it locally from the Modelfile, and keeping it loaded in memory while working. On the owner's hardware this is too heavy, so the copilot sat unused: every session started with a download or a model that competed with the editor for memory.
 
 Every conversation was also lost on reload. An answer worth keeping had to be copied out by hand before closing the tab, and a question asked yesterday could not be picked up again today.
 

@@ -1,4 +1,4 @@
-export const PRODUCT_NAME = "Codepilot";
+export const PRODUCT_NAME = "Zayn";
 
 // The same names the server reads as slash commands, in server/main.py TASK_PROMPTS
 export const COMMANDS = [

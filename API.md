@@ -1,6 +1,6 @@
-# Codepilot API
+# Zayn API
 
-The API behind the Codepilot website. It keeps conversations in the local PostgreSQL database and streams each reply from Ollama Cloud, **so the Ollama key never reaches the browser**.
+The API behind the Zayn website. It keeps conversations in the local PostgreSQL database and streams each reply from Ollama Cloud, **so the Ollama key never reaches the browser**.
 
 ## Table of Contents
 
@@ -18,7 +18,7 @@ The API behind the Codepilot website. It keeps conversations in the local Postgr
 
 ## 1. API Overview
 
-One caller, the Codepilot website on the same machine. It lists, opens, renames, and deletes saved conversations, and sends a message whose reply streams back while it is written. The model comes from `OLLAMA_MODEL` and the system prompt and sampling from `Modelfile`, never from the request.
+One caller, the Zayn website on the same machine. It lists, opens, renames, and deletes saved conversations, and sends a message whose reply streams back while it is written. The model comes from `OLLAMA_MODEL` and the system prompt and sampling from `Modelfile`, never from the request.
 
 ## 2. Base Configuration
 

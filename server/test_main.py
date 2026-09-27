@@ -55,7 +55,7 @@ def send(conversation_id: str, content: str):
 
 def test_the_model_comes_from_the_environment_and_the_prompt_from_the_modelfile():
     assert main.MODEL == "test-model"
-    assert "You are Codepilot" in main.SYSTEM_PROMPT
+    assert "You are Zayn" in main.SYSTEM_PROMPT
     assert main.OPTIONS["temperature"] == 0.2
     assert main.OPTIONS["top_k"] == 40
 

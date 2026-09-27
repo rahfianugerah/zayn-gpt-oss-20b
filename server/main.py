@@ -25,7 +25,7 @@ from db import Conversation, Message, SessionLocal
 logging.basicConfig(
     level=logging.INFO, stream=sys.stdout, format="%(asctime)s %(levelname)s %(name)s %(message)s"
 )
-logger = logging.getLogger("codepilot")
+logger = logging.getLogger("zayn")
 
 
 def load_modelfile(text: str) -> tuple[str, dict[str, object]]:
@@ -191,7 +191,7 @@ def not_found() -> JSONResponse:
 
 
 app = FastAPI(
-    title="Codepilot",
+    title="Zayn",
     docs_url="/api/v1/docs",
     openapi_url="/api/v1/openapi.json",
     redoc_url=None,
