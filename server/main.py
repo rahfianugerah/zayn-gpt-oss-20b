@@ -1,72 +1,52 @@
+import itertools
+import json
 import logging
-from pathlib import Path
+import re
+import uuid
+from datetime import datetime
 from typing import Literal
 
-from fastapi import FastAPI, Request
+import httpx
+from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-from huggingface_hub import InferenceClient
-from huggingface_hub.errors import HfHubHTTPError, InferenceTimeoutError
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    SecretStr,
-    field_validator,
-    model_validator,
-)
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from ollama import Client, ResponseError
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException
 
-ROOT = Path(__file__).resolve().parent.parent
-TOKEN_PLACEHOLDER = "your_hf_token_here"
+from config import ROOT, settings
+from db import Conversation, Message, SessionLocal
 
 logger = logging.getLogger("codepilot")
 
 
-class Settings(BaseSettings):
-    # The same .env also holds the frontend's PUBLIC_ variables, so unknown keys are ignored
-    model_config = SettingsConfigDict(env_file=ROOT / ".env", extra="ignore")
-
-    hf_token: SecretStr
-    model_id: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
-    cors_origins: str = "http://localhost:4321,http://127.0.0.1:4321"
-
-    @field_validator("hf_token")
-    @classmethod
-    def reject_placeholder(cls, value: SecretStr) -> SecretStr:
-        if value.get_secret_value().strip() in ("", TOKEN_PLACEHOLDER):
-            raise ValueError(
-                "HF_TOKEN is empty or still holds the placeholder from .env.example"
-            )
-        return value
+def load_modelfile(text: str) -> tuple[str, str, dict[str, object]]:
+    """Read the model, the system prompt, and the sampling options out of an Ollama Modelfile."""
+    model = re.search(r"^FROM\s+(\S+)", text, re.M).group(1)
+    system = re.search(r'^SYSTEM\s+"""(.*?)"""', text, re.M | re.S).group(1).strip()
+    options: dict[str, object] = {}
+    for name, raw in re.findall(r"^PARAMETER\s+(\w+)\s+(.+?)\s*$", text, re.M):
+        value = json.loads(raw)  # a number and a quoted string both parse as JSON
+        if name == "stop":
+            options.setdefault("stop", []).append(value)
+        else:
+            options[name] = value
+    return model, system, options
 
 
-settings = Settings()
+# The Modelfile stays the one place the prompt and sampling are tuned, and the same file still
+# works with `ollama create`. Ollama Cloud accepts every Modelfile parameter per request.
+MODEL, SYSTEM_PROMPT, OPTIONS = load_modelfile((ROOT / "Modelfile").read_text(encoding="utf-8"))
 
-# What the old Modelfile baked into the local model, now sent with every request. The provider
-# applies Qwen's own chat template, so the Modelfile TEMPLATE block has no equivalent here.
-SYSTEM_PROMPT = (
-    "You are Codepilot, a genius, smart, faster coding copilot. "
-    "You produce correct, secure, and runnable code with minimal verbosity. "
-    "When a task is underspecified, ask focused clarifying questions before solving. "
-    "When code is provided, read it first, reason about intent, then produce the final answer. "
-    "For fixes, return only the fixed code unless explicitly asked for an explanation. "
-    "For refactors, preserve public APIs and tests. "
-    "For docstrings, add accurate types and concise, helpful descriptions. "
-    "Prefer standard libraries and stable patterns. "
-    "Avoid speculative dependencies. "
-    "If the user requests formats, honor them exactly: 'diff' means a unified patch; "
-    "'json' means strict JSON; 'code only' means only code. "
-    "Never include private chain-of-thought; provide results and, if asked, brief bullet-point reasoning. "
-    "Detect and prevent data leakage and unsafe patterns. "
-    "Default to POSIX-compatible examples. "
-    "Always be deterministic and reproducible where possible."
+model_client = Client(
+    host="https://ollama.com",
+    headers={"Authorization": f"Bearer {settings.ollama_api_key.get_secret_value()}"},
+    timeout=300,
 )
-# top_k and repeat_penalty from the Modelfile are Ollama-only and have no OpenAI-compatible field
-SAMPLING = {"temperature": 0.2, "top_p": 0.9, "max_tokens": 4096}
 
 Task = Literal[
     "general",
@@ -95,46 +75,93 @@ TASK_PROMPTS: dict[str, str] = {
 }
 
 
-class Message(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=32_000)
-
-
-class CompletionRequest(BaseModel):
+class MessageIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     task: Task = "general"
-    messages: list[Message] = Field(min_length=1, max_length=50)
+    content: str = Field(max_length=32_000)
 
-    @model_validator(mode="after")
-    def ends_with_user(self) -> "CompletionRequest":
-        if self.messages[-1].role != "user":
-            raise ValueError("the last message must come from the user")
-        return self
+    @field_validator("content")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("the message is empty")
+        return value
 
 
-def build_messages(request: CompletionRequest) -> list[dict[str, str]]:
-    """Prepend the system prompt and put the task instruction in front of the latest question."""
-    *history, latest = request.messages
+class MessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: str
+    content: str
+    reasoning: str | None
+    created_at: datetime
+
+
+class ConversationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConversationDetail(ConversationOut):
+    messages: list[MessageOut]
+
+
+class ConversationPage(BaseModel):
+    items: list[ConversationOut]
+    total: int
+    limit: int
+    offset: int
+
+
+def get_session():
+    with SessionLocal() as session:
+        yield session
+
+
+def build_messages(history: list[Message], task: str, content: str) -> list[dict[str, str]]:
+    """Prepend the system prompt and put the task instruction in front of the new question only."""
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
         *({"role": m.role, "content": m.content} for m in history),
-        {
-            "role": "user",
-            "content": f"{TASK_PROMPTS[request.task]}\n\n{latest.content}",
-        },
+        {"role": "user", "content": f"{TASK_PROMPTS[task]}\n\n{content}"},
     ]
 
 
-def error_response(
-    status: int, code: str, message: str, detail: object = None
-) -> JSONResponse:
+def save_reply(conversation_id: uuid.UUID, content: str, reasoning: str | None) -> None:
+    if not content:
+        return
+    with SessionLocal() as session:
+        session.add(
+            Message(
+                conversation_id=conversation_id,
+                role="assistant",
+                content=content,
+                reasoning=reasoning,
+            )
+        )
+        session.execute(
+            update(Conversation)
+            .where(Conversation.id == conversation_id)
+            .values(updated_at=func.now())
+        )
+        session.commit()
+
+
+def error_response(status: int, code: str, message: str, detail: object = None) -> JSONResponse:
     return JSONResponse(
         status_code=status,
         content={"error": {"code": code, "message": message, "detail": detail}},
     )
+
+
+def not_found() -> JSONResponse:
+    return error_response(404, "CONVERSATION_NOT_FOUND", "Conversation does not exist")
 
 
 app = FastAPI(
@@ -146,7 +173,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in settings.cors_origins.split(",")],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
@@ -168,40 +195,97 @@ async def http_failed(_: Request, exc: HTTPException) -> JSONResponse:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "model": settings.model_id}
+    return {"status": "ok", "model": MODEL}
 
 
-@app.post("/api/v1/completions", response_class=StreamingResponse)
-def create_completion(request: CompletionRequest):
-    """Stream the model's reply as plain text chunks."""
-    client = InferenceClient(api_key=settings.hf_token.get_secret_value(), timeout=300)
+@app.get("/api/v1/conversations", response_model=ConversationPage)
+def list_conversations(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    session: Session = Depends(get_session),
+):
+    total = session.scalar(select(func.count()).select_from(Conversation))
+    items = session.scalars(
+        select(Conversation).order_by(Conversation.updated_at.desc()).limit(limit).offset(offset)
+    ).all()
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+@app.post("/api/v1/conversations", response_model=ConversationOut, status_code=201)
+def create_conversation(session: Session = Depends(get_session)):
+    conversation = Conversation(title="New Chat")
+    session.add(conversation)
+    session.commit()
+    return conversation
+
+
+@app.get("/api/v1/conversations/{conversation_id}", response_model=ConversationDetail)
+def get_conversation(conversation_id: uuid.UUID, session: Session = Depends(get_session)):
+    conversation = session.get(Conversation, conversation_id)
+    if conversation is None:
+        return not_found()
+    return ConversationDetail.model_validate(conversation)
+
+
+@app.delete("/api/v1/conversations/{conversation_id}", status_code=204)
+def delete_conversation(conversation_id: uuid.UUID, session: Session = Depends(get_session)):
+    deleted = session.execute(delete(Conversation).where(Conversation.id == conversation_id))
+    session.commit()
+    if deleted.rowcount == 0:
+        return not_found()
+    logger.info("Deleted conversation %s and its messages", conversation_id)
+    return Response(status_code=204)
+
+
+@app.post("/api/v1/conversations/{conversation_id}/messages")
+def create_message(
+    conversation_id: uuid.UUID, body: MessageIn, session: Session = Depends(get_session)
+):
+    """Stream the reply as NDJSON, one {"reasoning"}, {"content"}, or {"error"} object per line."""
+    conversation = session.get(Conversation, conversation_id)
+    if conversation is None:
+        return not_found()
+
+    prompt = build_messages(conversation.messages, body.task, body.content)
+    stream = model_client.chat(model=MODEL, messages=prompt, options=OPTIONS, stream=True)
     try:
-        # The request is sent here, so an upstream failure is still reported with a real status
-        stream = client.chat_completion(
-            build_messages(request), model=settings.model_id, stream=True, **SAMPLING
-        )
-    except (HfHubHTTPError, InferenceTimeoutError) as error:
-        client.close()
-        upstream_status = getattr(getattr(error, "response", None), "status_code", None)
-        logger.warning(
-            "Model request failed with upstream status %s: %s", upstream_status, error
-        )
+        # The client sends the request lazily, so the first chunk is read here, where a failure
+        # can still be answered with a real status instead of a broken stream
+        first = next(stream)
+    except (ResponseError, httpx.HTTPError, StopIteration) as error:
+        logger.warning("Model request failed: %s", error)
         return error_response(
             502,
             "MODEL_UNAVAILABLE",
             "The model could not answer. Try again shortly",
-            {"upstream_status": upstream_status},
+            {"upstream_status": getattr(error, "status_code", None)},
         )
 
-    def pieces():
-        with client:
-            try:
-                for chunk in stream:
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
-            except Exception:
-                # Headers are already sent, so the failure can only be reported inside the text
-                logger.exception("Model stream was interrupted")
-                yield "\n\n[Error] The reply was interrupted. Try again."
+    # The question is saved only once the model has started answering, so a failed request
+    # leaves nothing behind
+    if not conversation.messages:
+        conversation.title = body.content.strip().splitlines()[0][:80]
+    conversation.updated_at = func.now()
+    session.add(Message(conversation_id=conversation.id, role="user", content=body.content))
+    session.commit()
 
-    return StreamingResponse(pieces(), media_type="text/plain; charset=utf-8")
+    def events():
+        content: list[str] = []
+        reasoning: list[str] = []
+        try:
+            for chunk in itertools.chain([first], stream):
+                if chunk.message.thinking:
+                    reasoning.append(chunk.message.thinking)
+                    yield json.dumps({"reasoning": chunk.message.thinking}) + "\n"
+                if chunk.message.content:
+                    content.append(chunk.message.content)
+                    yield json.dumps({"content": chunk.message.content}) + "\n"
+        except Exception:
+            logger.exception("Model stream was interrupted")
+            error = {"code": "STREAM_INTERRUPTED", "message": "The reply was interrupted. Try again"}
+            yield json.dumps({"error": error}) + "\n"
+        finally:
+            # Also runs when the user stops the reply, so a partial answer is kept, not lost
+            save_reply(conversation_id, "".join(content), "".join(reasoning) or None)
+
+    return StreamingResponse(events(), media_type="application/x-ndjson")
