@@ -25,6 +25,7 @@ One person: the owner, using it daily as a personal coding assistant while writi
 - Copy a reply, or any code block in it, with one action.
 - Keep the conversation going: follow-up questions see the earlier turns.
 - Come back to an earlier conversation from a sidebar, grouped by when it happened, and delete one that is no longer needed.
+- Find an earlier conversation by searching the sidebar for words in its title or its messages, still found when a word is misspelled.
 - Rename a conversation, from the sidebar or from its name above the chat, when the title taken from the first question does not say what it is about.
 - Recognize the copilot by its name, Zayn, and its mascot, shown as the logo beside the name, beside every reply, and in the browser tab.
 - Run the whole thing from a fresh clone without downloading or building a model. The model runs in the cloud and the owner supplies one access key.
