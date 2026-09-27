@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files: only the placeholder example is committed
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -40,6 +41,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-#python
+# python
+.venv/
 *.pyc
 __pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# keys, credentials, and model weights
+*.key
+keys/
+secrets/
+credentials/
+*.gguf
+*.safetensors
