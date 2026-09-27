@@ -15,7 +15,25 @@ export const COMMANDS = [
   { name: "testgen", description: "Write tests for edge cases and error paths" },
   { name: "translate", description: "Translate to another language" },
   { name: "generate", description: "Generate exactly the format asked for" },
+  { name: "material", description: "Write study material you can read, copy, or download" },
+  { name: "flashcards", description: "Make a flashcard deck to test yourself" },
 ] as const;
+
+// The two study features, each a button that puts the box in a mode. The command is added on send
+export const STUDY_MODES = [
+  {
+    command: "material",
+    label: "Material",
+    placeholder: "What material do you need? For example, a beginner guide to Python decorators",
+  },
+  {
+    command: "flashcards",
+    label: "Flashcards",
+    placeholder: "What do you want to be tested on? For example, SQL joins, 10 cards",
+  },
+] as const;
+
+export type StudyMode = (typeof STUDY_MODES)[number]["command"];
 
 // Shown on an empty chat. Most start with a command, which teaches it, and end on a new line,
 // ready for the code to be pasted

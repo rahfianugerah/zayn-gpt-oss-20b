@@ -148,11 +148,14 @@ function MarkdownComponent({
   children,
   id,
   className,
-  components = INITIAL_COMPONENTS,
+  components,
 }: MarkdownProps) {
   const generatedId = useId()
   const blockId = id ?? generatedId
   const blocks = useMemo(() => parseMarkdownIntoBlocks(children), [children])
+  // Custom components add to the defaults rather than replacing them, so a caller that styles
+  // headings or lists keeps the highlighted code blocks
+  const merged = useMemo(() => ({ ...INITIAL_COMPONENTS, ...components }), [components])
 
   return (
     <div className={className}>
@@ -160,7 +163,7 @@ function MarkdownComponent({
         <MemoizedMarkdownBlock
           key={`${blockId}-block-${index}`}
           content={block}
-          components={components}
+          components={merged}
         />
       ))}
     </div>

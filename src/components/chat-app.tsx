@@ -1,10 +1,12 @@
 "use client";
 
-import { ArrowUp, Loader2, Pencil, Slash, Square, User } from "lucide-react";
+import { ArrowUp, BookOpen, Layers, Loader2, Pencil, Slash, Square, User } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { CopyButton } from "@/components/copy-button";
+import { FlashcardDeck } from "@/components/flashcard-deck";
+import { MaterialCard } from "@/components/material-card";
 import { TitleEditor } from "@/components/title-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -33,7 +35,16 @@ import {
   listConversations,
   streamReply,
 } from "@/lib/api";
-import { COMMANDS, LOGO_SRC, PRODUCT_NAME, SUGGESTIONS, splitCommand } from "@/lib/product";
+import { parseFlashcards } from "@/lib/flashcards";
+import {
+  COMMANDS,
+  LOGO_SRC,
+  PRODUCT_NAME,
+  STUDY_MODES,
+  type StudyMode,
+  SUGGESTIONS,
+  splitCommand,
+} from "@/lib/product";
 import { cn } from "@/lib/utils";
 
 type Chat = { id: string | null; title: string; messages: ChatMessage[] };
@@ -57,6 +68,8 @@ export function ChatApp() {
   const [model, setModel] = useState<string | null>(null);
   const [highlight, setHighlight] = useState(0);
   const [menuForced, setMenuForced] = useState(false);
+  // A study button puts the box in material or flashcards mode until the next send
+  const [mode, setMode] = useState<StudyMode | null>(null);
   const [dismissedAt, setDismissedAt] = useState<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const latestOpenRef = useRef<string | null>(null);
@@ -214,7 +227,8 @@ export function ChatApp() {
     if (matches.length > 0) return pickCommand(matches[activeIndex].name);
     if (!question.trim() || isLoading) return;
 
-    const content = prompt;
+    // The mode becomes the command, unless the message already starts with one
+    const content = mode && !splitCommand(prompt)[0] ? `/${mode} ${prompt}` : prompt;
     const controller = new AbortController();
     controllerRef.current = controller;
     // Only unique within the list is needed; saved messages carry numeric ids from the server
@@ -223,6 +237,7 @@ export function ChatApp() {
     let answered = false;
 
     setPrompt("");
+    setMode(null);
     setError(null);
     setIsLoading(true);
     setChat((current) => ({
@@ -355,6 +370,7 @@ export function ChatApp() {
                       message={message}
                       isLast={index === lastIndex}
                       isStreaming={isLoading && index === lastIndex}
+                      asked={index > 0 ? splitCommand(chat.messages[index - 1].content)[0] : null}
                     />
                   ))
                 )}
@@ -424,26 +440,54 @@ export function ChatApp() {
                     aria-expanded={matches.length > 0}
                     aria-controls="command-menu"
                     aria-activedescendant={matches.length > 0 ? `command-${matches[activeIndex].name}` : undefined}
-                    placeholder={`Ask ${PRODUCT_NAME}, or type / for commands`}
+                    placeholder={
+                      STUDY_MODES.find((study) => study.command === mode)?.placeholder ??
+                      `Ask ${PRODUCT_NAME}, or type / for commands`
+                    }
                     onKeyDown={onPromptKeyDown}
                     className="min-h-11 pt-3 pl-4 text-base leading-[1.3] sm:text-base md:text-base"
                   />
                   <PromptInputActions className="mt-5 flex w-full items-center justify-between gap-2 px-3 pb-3">
-                    <PromptInputAction tooltip="Commands">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        aria-label="Commands"
-                        className="size-9 rounded-full"
-                        onClick={() => {
-                          setMenuForced(true);
-                          setDismissedAt(null);
-                          document.getElementById(PROMPT_ID)?.focus();
-                        }}
-                      >
-                        <Slash size={18} />
-                      </Button>
-                    </PromptInputAction>
+                    <div className="flex items-center gap-2">
+                      <PromptInputAction tooltip="Commands">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          aria-label="Commands"
+                          className="size-9 rounded-full"
+                          onClick={() => {
+                            setMenuForced(true);
+                            setDismissedAt(null);
+                            document.getElementById(PROMPT_ID)?.focus();
+                          }}
+                        >
+                          <Slash size={18} />
+                        </Button>
+                      </PromptInputAction>
+                      {STUDY_MODES.map((study) => {
+                        const Icon = study.command === "material" ? BookOpen : Layers;
+                        const isActive = mode === study.command;
+                        return (
+                          <PromptInputAction
+                            key={study.command}
+                            tooltip={isActive ? "Back to a normal message" : `Describe it, then send to generate ${study.command}`}
+                          >
+                            <Button
+                              variant={isActive ? "default" : "outline"}
+                              aria-pressed={isActive}
+                              className="h-9 rounded-full px-3"
+                              onClick={() => {
+                                setMode(isActive ? null : study.command);
+                                document.getElementById(PROMPT_ID)?.focus();
+                              }}
+                            >
+                              <Icon size={16} />
+                              {study.label}
+                            </Button>
+                          </PromptInputAction>
+                        );
+                      })}
+                    </div>
                     <PromptInputAction tooltip={isLoading ? "Stop generation" : "Send message"}>
                       <Button
                         size="icon"
@@ -473,10 +517,13 @@ function ChatBubble({
   message,
   isLast,
   isStreaming,
+  asked,
 }: {
   message: ChatMessage;
   isLast: boolean;
   isStreaming: boolean;
+  // The command of the question this reply answers, which decides how the reply is shown
+  asked: string | null;
 }) {
   const isAssistant = message.role === "assistant";
   const [command, text] = splitCommand(message.content);
@@ -518,11 +565,7 @@ function ChatBubble({
                 Thinking...
               </p>
             ) : (
-              message.content && (
-                <MessageContent markdown className="text-foreground prose flex-1 rounded-lg bg-transparent p-0">
-                  {message.content}
-                </MessageContent>
-              )
+              message.content && <Reply content={message.content} asked={asked} isStreaming={isStreaming} />
             )}
             {!isStreaming && message.content && (
               <MessageActions
@@ -557,5 +600,40 @@ function ChatBubble({
         )}
       </div>
     </Message>
+  );
+}
+
+/** A reply shown as study material, a flashcard deck, or plain Markdown, by the command it answers. */
+function Reply({ content, asked, isStreaming }: { content: string; asked: string | null; isStreaming: boolean }) {
+  if (asked === "material") return <MaterialCard content={content} isStreaming={isStreaming} />;
+
+  if (asked === "flashcards") {
+    // The deck arrives as JSON, which is not worth showing half written
+    if (isStreaming) {
+      return (
+        <p role="status" className="text-muted-foreground flex items-center gap-2 text-sm">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          Creating flashcards...
+        </p>
+      );
+    }
+    const cards = parseFlashcards(content);
+    if (cards) return <FlashcardDeck cards={cards} />;
+    return (
+      <>
+        <SystemMessage variant="warning" fill>
+          The reply was not a set of flashcards, so it is shown as text. Ask again to get a deck.
+        </SystemMessage>
+        <MessageContent markdown className="text-foreground prose flex-1 rounded-lg bg-transparent p-0">
+          {content}
+        </MessageContent>
+      </>
+    );
+  }
+
+  return (
+    <MessageContent markdown className="text-foreground prose flex-1 rounded-lg bg-transparent p-0">
+      {content}
+    </MessageContent>
   );
 }

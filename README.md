@@ -90,8 +90,12 @@ Start a message with a slash command to choose what kind of help you want. Type 
 | `/testgen` | Writes tests for edge cases and error paths |
 | `/translate` | Translates to another language |
 | `/generate` | Generates exactly the format asked for |
+| `/material` | Writes study material, shown as a card you can switch to dark, copy, or download as Markdown |
+| `/flashcards` | Builds a flashcard deck to test yourself |
 
 An unknown command, such as `/etc/hosts`, is sent as plain text. On an empty chat, a suggestion such as **Fix an IndexError** fills the box with a starting question and its command, ready for your code.
+
+**Study material and flashcards have their own buttons under the box.** Press **Material** or **Flashcards**, describe what you need, and send; the button adds the command for you. Material comes back as a formatted document. Flashcards come back as a deck: click a card to see its answer, move with the arrows or the arrow keys, and shuffle or start over from the deck's header.
 
 Rename a conversation by clicking its name above the chat, by double-clicking it in the sidebar, or from the menu beside it. Enter or the check button saves; Escape or the cross cancels.
 
@@ -146,6 +150,7 @@ src/
 
 ```bash
 pytest server        # in ai-project; needs the local chat database, and each test deletes what it creates
+npm test             # the flashcard parser, with Node's built-in test runner
 npm run lint
 npm run build        # static site in out/
 ```
@@ -155,6 +160,7 @@ The branch shape is trunk: `main` only. The browser tab shows the product name a
 ## Known Limitations
 
 - **Long conversations run into the model's context window.** Every earlier turn is sent again with each question, and `num_ctx` in the Modelfile is 8192 tokens. Past that, the model loses the oldest turns or the request fails. Start a new chat for a new topic.
+- **A flashcard deck depends on the model returning JSON.** The model is asked for a bare JSON array and the website reads it defensively, but a reply it cannot read is shown as text with a warning. Ask again to get a deck.
 - **The sidebar lists the latest 100 conversations.** Older ones stay in the database but are not shown.
 - **A stopped reply keeps what had arrived.** Pressing stop saves the partial answer, and a reply stopped before any text arrived saves nothing.
 - **Reasoning appears only for a model that returns it.** `gpt-oss:20b` does; a model without thinking shows no Show Reasoning block.

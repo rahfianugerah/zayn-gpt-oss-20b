@@ -110,8 +110,11 @@
   --tw-prose-td-borders: var(--border);
 }
 
-/* Inline code already has its own chip, so the plugin's decorative backticks are dropped */
+/* Inline code already has its own chip and a blockquote its own rule, so the plugin's decorative
+   backticks and curly quotes are dropped */
 .prose :where(code)::before,
-.prose :where(code)::after {
+.prose :where(code)::after,
+.prose :where(blockquote p)::before,
+.prose :where(blockquote p)::after {
   content: none;
 }
