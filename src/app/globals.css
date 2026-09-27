@@ -80,10 +80,15 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Scrollbars are hidden everywhere at the owner's request. Scrolling still works by wheel,
+       touch, and keyboard; the first rule covers Firefox and Chromium, the second Safari. */
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
   }
   html {
     @apply font-sans;
-    scrollbar-color: #767676 transparent;
   }
   body {
     @apply bg-background text-foreground;
