@@ -307,7 +307,9 @@ export function ChatApp() {
             </h1>
           </header>
 
-          <div className="relative flex-1 overflow-y-auto">
+          {/* Only the chat container scrolls. This box clips, so it can never become a second
+              scroller that the wheel falls through to at the end of the conversation. */}
+          <div className="relative min-h-0 flex-1 overflow-hidden">
             <ChatContainerRoot className="h-full">
               <ChatContainerContent className="space-y-0 px-5 py-12">
                 {openingId ? (
@@ -457,7 +459,9 @@ function ChatBubble({
   return (
     <Message
       className={cn(
-        "mx-auto flex w-full max-w-3xl flex-col gap-2 px-0 py-3 md:px-6",
+        // relative keeps the screen reader labels inside the scrolling list, not measured against
+        // the box around it, where they stretched it to the full conversation height
+        "relative mx-auto flex w-full max-w-3xl flex-col gap-2 px-0 py-3 md:px-6",
         isAssistant ? "items-start" : "items-end",
       )}
     >
