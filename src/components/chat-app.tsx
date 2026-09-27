@@ -205,7 +205,10 @@ export function ChatApp() {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const step = event.key === "ArrowDown" ? 1 : -1;
-      setHighlight((activeIndex + step + matches.length) % matches.length);
+      const next = (activeIndex + step + matches.length) % matches.length;
+      setHighlight(next);
+      // Keep the highlighted command in view once the list scrolls
+      document.getElementById(`command-${matches[next].name}`)?.scrollIntoView({ block: "nearest" });
     } else if (event.key === "Tab") {
       event.preventDefault();
       pickCommand(matches[activeIndex].name);
@@ -400,7 +403,8 @@ export function ChatApp() {
                   id="command-menu"
                   role="listbox"
                   aria-label="Commands"
-                  className="bg-popover absolute bottom-full left-0 z-20 mb-2 w-full max-w-sm rounded-xl border p-1 shadow-md"
+                  // Capped to the space a phone has above the box, and scrollable past that
+                  className="bg-popover absolute bottom-full left-0 z-20 mb-2 max-h-[min(22rem,45dvh)] w-full overflow-y-auto overscroll-contain rounded-xl border p-1 shadow-md sm:max-w-sm"
                 >
                   {matches.map((command, index) => (
                     <li
