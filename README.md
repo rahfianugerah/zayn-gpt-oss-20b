@@ -1,94 +1,169 @@
-![Python](https://img.shields.io/badge/Python-3670A0?&logo=python&logoColor=ffdd54)
-![Matplotlib](https://img.shields.io/badge/Ollama-%23ffffff.svg?&)
-![Next JS](https://img.shields.io/badge/Next-black?&logo=next.js&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?&logo=fastapi)
-![Maintenance](https://img.shields.io/badge/Maintenance-Yes-green)
-[![MIT license](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-![Build](https://img.shields.io/badge/Build-Passing-green)
+# Codepilot
 
-<div align="center">
-  <img src="https://github.com/rahfianugerah/codepilot/blob/main/public/codepilot.png" height=150 width=150 />
-  <h3>
-    Codepilot
-  </h3>
-  <p>
-    Qwen 2.5-Coder: 7B Instruct Powered Offline Copilot built with Next.js, FastAPI, and Ollama.
-  </p>
-</div>
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)
+![Next](https://img.shields.io/badge/Next-16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-Cloud-000000?logo=ollama&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Active-2EA043)
+![License](https://img.shields.io/badge/License-MIT-750014)
 
-### Project Overview
-<p align="justify">
-  Codepilot is a fully local AI coding assistant designed to help developers explain, refactor, and fix code without sending data to the cloud.  
-  It connects a Next.js front-end with a FastAPI backend that streams responses from a locally-hosted Ollama LLM.
-</p>
+A coding copilot in the browser, answered by a model on Ollama Cloud, with every conversation saved in PostgreSQL on this machine. **No model is downloaded or run locally.**
 
-### Installation
-Pull Qwen 2.5-Coder:7B using `ollama`:
+It exists because running Qwen2.5-Coder-7B through Ollama on the owner's laptop was too heavy to keep loaded while working, so the copilot went unused. The product intent is in [PRD.md](PRD.md) and the endpoints are in [API.md](API.md).
+
+## Table of Contents
+
+1. [Setup](#setup)
+2. [Usage](#usage)
+3. [Configuration](#configuration)
+4. [Data](#data)
+5. [Project Structure](#project-structure)
+6. [Development](#development)
+7. [Known Limitations](#known-limitations)
+8. [Deviations From the Standards](#deviations-from-the-standards)
+9. [License](#license)
+
+## Setup
+
+On the owner's machine the `chat` database already exists and is migrated, so start at step 2 and skip the create command in step 3. A fresh clone runs every step.
+
+**1. Backend environment.** A `.venv` with Python 3.13. Python 3.12 also works; it is what this was verified on.
+
 ```bash
-ollama pull qwen2.5-coder:7b-instruct-q4_K_M
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+source .venv/bin/activate       # macOS and Linux
+pip install -r requirements-dev.txt
 ```
-Inside the folder, run:
+
+**2. Configuration.** Copy the template and fill it in by hand.
+
 ```bash
-ollama create codepilot-qwen2_5-coder-7b-instruct -f Modelfile
+cp .env.example .env
 ```
-Front-End Installation:
+
+Set `OLLAMA_API_KEY` to a key from ollama.com under Settings > Keys, and put the local PostgreSQL password into `DATABASE_URL`. **The server refuses to start while `OLLAMA_API_KEY` still holds its placeholder, or while `DATABASE_URL` points anywhere but `127.0.0.1`, `localhost`, or `::1`.** That is deliberate: conversations may only live in the PostgreSQL server on this machine.
+
+**3. Database.** Create the `chat` database on the local server, then build the tables.
+
+```bash
+psql -h 127.0.0.1 -U postgres -c "CREATE DATABASE chat"
+alembic -c server/alembic.ini upgrade head
+```
+
+**The migration reads the same settings as the server, so step 2 has to come first.** With `OLLAMA_API_KEY` unset, it stops with `Field required` before touching the database.
+
+**4. Frontend.**
+
 ```bash
 npm install
 ```
-Back-End Installation:
-```bash
-pip install -r requirements.txt
-```
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Usage
 
-### Getting Started
-
-First, start the model:
-```bash
-ollama run codepilot
-```
-Second, run the back-end server using `uvicorn`:
-```bash
-uvicorn main:app --host 127.0.0.1 --port 8000 --reload
-```
-Last, run the front-end development server:
+Start the API, then the website, each in its own terminal from the repository root.
 
 ```bash
+uvicorn main:app --app-dir server --host 127.0.0.1 --port 8000 --reload
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` and ask a question. The reply streams in, the model's reasoning sits behind **Show Reasoning** when the model returns one, and the conversation appears in the sidebar.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Start a message with a slash command to choose what kind of help you want. Type `/` in the box, or press the `/` button, to pick one from the menu.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Does |
+| :- | :- |
+| `/general` | Answers the question directly. The default when no command is given |
+| `/explain` | Explains what the code does and where it can break |
+| `/fix` | Returns the fixed code only |
+| `/docstring` | Adds docstrings and type hints |
+| `/refactor` | Restructures without changing the public API |
+| `/review` | Reviews for correctness, security, and tests |
+| `/optimize` | Makes it faster and simpler with the same behavior |
+| `/testgen` | Writes tests for edge cases and error paths |
+| `/translate` | Translates to another language |
+| `/generate` | Generates exactly the format asked for |
 
-### Learn More
+An unknown command, such as `/etc/hosts`, is sent as plain text.
 
-To learn more about Next.js, take a look at the following resources:
+## Configuration
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Every variable the project reads. Names only; see `.env.example`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Variable | Required | Description |
+| :- | :- | :- |
+| `OLLAMA_API_KEY` | Yes | The Ollama Cloud key the API sends with every model request. Never reaches the browser |
+| `DATABASE_URL` | Yes | The local PostgreSQL connection, `postgresql+psycopg://...@127.0.0.1:5432/chat` |
+| `CORS_ORIGINS` | No | Comma-separated browser origins allowed to call the API. Defaults to the website on port 3000 |
+| `NEXT_PUBLIC_COPILOT_URL` | No | The API origin the website calls, built into the page. Defaults to `http://127.0.0.1:8000` |
 
-### Deploy On Vercel
+**The model, the system prompt, and the sampling settings live in `Modelfile`, not in `.env`.** The API reads `FROM`, `SYSTEM`, and every `PARAMETER` from it at startup and sends them with each request. To switch model, change `FROM` to another model Ollama Cloud serves, such as `kimi-k2.7-code`, and restart the API.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Data
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Conversations are stored in PostgreSQL on this machine and are never committed.**
 
-### License
-<p align="justify">
-This project is licensed under the MIT License. This means you are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software. The full text of the license is available in the <a href="https://github.com/rahfianugerah/codepilot/blob/main/LICENSE">LICENSE</a> file. By using this project, you agree to include the license notice and disclaimers in all copies or substantial portions of the Software. For more details on the terms and conditions of the MIT License, please refer to the license file.
-</p>
+| Item | Location | Notes |
+| :- | :- | :- |
+| Conversations and messages | Local PostgreSQL, database `chat` | Not in git. Deleting a conversation in the sidebar removes its messages too |
+| Secrets | `.env` | Gitignored. Only `.env.example` is committed |
+| Python environment | `.venv/` | Gitignored. Produced by step 1 |
+| Frontend build | `.next/`, `out/` | Gitignored. Produced by `npm run dev` and `npm run build` |
 
-### Author
-GitHub: [@rahfianugerah](https://www.github.com/rahfianugerah)
+Every message and the earlier turns of its conversation are sent to Ollama Cloud. Do not paste secrets or personal data into the chat.
+
+## Project Structure
+
+```text
+Modelfile                 the model, system prompt, and sampling, read by the API
+server/
+  main.py                 routes, slash commands, and the Ollama Cloud stream
+  config.py               settings, with the local-only database check
+  db.py                   the conversations and messages tables
+  migrations/             Alembic migrations
+  test_main.py            the smoke test
+src/
+  app/                    the one page, its layout, and the black and white theme
+  components/             the chat, the sidebar, and the copy button
+  components/ui/          shadcn and prompt-kit components, owned and edited here
+  lib/                    the API client, the product name, and the command list
+```
+
+## Development
+
+```bash
+pytest server        # needs the local chat database; each test deletes what it creates
+npm run lint
+npm run build        # static site in out/
+```
+
+The branch shape is trunk: `main` only. The browser tab shows the product name alone on every view, since the app is one screen.
+
+## Known Limitations
+
+- **Long conversations run into the model's context window.** Every earlier turn is sent again with each question, and `num_ctx` in the Modelfile is 8192 tokens. Past that, the model loses the oldest turns or the request fails. Start a new chat for a new topic.
+- **The sidebar lists the latest 100 conversations.** Older ones stay in the database but are not shown.
+- **A stopped reply keeps what had arrived.** Pressing stop saves the partial answer, and a reply stopped before any text arrived saves nothing.
+- **Reasoning appears only for a model that returns it.** `gpt-oss:20b` does; a model without thinking shows no Show Reasoning block.
+- **Ollama Cloud usage limits apply.** A request past the limit, or with a wrong key, fails with a "model could not answer" banner, and the question goes back into the box.
+- **There is no sign-in.** Anyone who can reach port 8000 can read and delete conversations and spend the Ollama quota. The API is bound to `127.0.0.1` for that reason.
+- **The tests use the real local database.** They create and delete their own conversations and leave the rest alone.
+
+## Deviations From the Standards
+
+1. **Next instead of React on Vite.** `stacks.rules.md` sets React 19 on Vite as the frontend. This uses Next 16 because the owner chose it. It is exported as static files, so it still ships as files with no Node server. The cost accepted: Next's build and conventions on top of React.
+2. **lucide icons instead of Tabler.** `uix.component.md` and `stacks.rules.md` set Tabler as the one icon set. The prompt-kit and shadcn components the owner chose are built on lucide, so lucide is the one set used throughout. The cost accepted: glyph names differ from the other projects.
+3. **prompt-kit's shapes instead of the two-radius scale.** `uix.component.md` and `button.component.md` set 8px and 16px radii and a border-only field focus. This keeps prompt-kit's round buttons, rounded input, and focus rings, because the owner asked for that look. The colors and type still follow the standard.
+4. **No TanStack Query or axios.** `stacks.rules.md` starts every frontend on both. This app makes four small requests and one stream, and axios cannot read a stream in the browser. The cost accepted: no request cache.
+5. **The model is on Ollama Cloud, not Claude.** `stacks.rules.md` sets Claude through the `anthropic` SDK. The owner chose Ollama Cloud for an open model. The cost accepted: a third party processes every message.
+6. **One repository for the API and the website.** `repository.rules.md` requires separate `-backend` and `-frontend` repositories. This is a local tool with no deployment, so it stays together until it deploys. The cost accepted: split it before the first deployment.
+7. **The API connects as the `postgres` superuser.** `database.rules.md` asks for a least-privilege user. This follows the owner's local setup, and the startup check keeps it on this machine. The cost accepted: a bug in the API has full rights on the local server.
+8. **No authentication.** `security.rules.md` and `auth.rules.md` allow only the health route to be public. There is one user on one machine, and the API listens on `127.0.0.1` only.
+9. **`requirements.txt` instead of `pyproject.toml`.** `stacks.rules.md` declares the Python version in `pyproject.toml`. The existing manifest was kept. The cost accepted: the Python version is stated here rather than enforced.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
