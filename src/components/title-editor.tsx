@@ -47,7 +47,8 @@ export function TitleEditor({ title, onSave, onCancel, className }: TitleEditorP
             finish(event.key === "Enter");
           }
         }}
-        className="border-ring bg-background w-full min-w-0 rounded-md border px-2 py-1 outline-none"
+        // No border, at the owner's request: the gray fill alone marks the title as being edited
+        className="bg-muted w-full min-w-0 rounded-md px-2 py-1 outline-none"
       />
       <Button
         variant="ghost"
