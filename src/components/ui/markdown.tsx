@@ -21,8 +21,59 @@ function parseMarkdownIntoBlocks(markdown: string): string[] {
 
 function extractLanguage(className?: string): string {
   if (!className) return "plaintext"
-  const match = className.match(/language-(\w+)/)
-  return match ? match[1] : "plaintext"
+  // Wider than \w, so c++, c#, and objective-c keep their whole name
+  const match = className.match(/language-([\w+#-]+)/)
+  return match ? match[1].toLowerCase() : "plaintext"
+}
+
+// The name a reader knows for the tag a model writes after the fence
+const LANGUAGE_NAMES: Record<string, string> = {
+  bash: "Shell",
+  c: "C",
+  "c#": "C#",
+  "c++": "C++",
+  cpp: "C++",
+  cs: "C#",
+  csharp: "C#",
+  css: "CSS",
+  diff: "Diff",
+  dockerfile: "Dockerfile",
+  go: "Go",
+  html: "HTML",
+  java: "Java",
+  javascript: "JavaScript",
+  js: "JavaScript",
+  json: "JSON",
+  jsx: "JSX",
+  kotlin: "Kotlin",
+  markdown: "Markdown",
+  md: "Markdown",
+  php: "PHP",
+  plaintext: "Text",
+  powershell: "PowerShell",
+  ps1: "PowerShell",
+  py: "Python",
+  python: "Python",
+  rb: "Ruby",
+  ruby: "Ruby",
+  rs: "Rust",
+  rust: "Rust",
+  sh: "Shell",
+  shell: "Shell",
+  sql: "SQL",
+  swift: "Swift",
+  text: "Text",
+  toml: "TOML",
+  ts: "TypeScript",
+  tsx: "TSX",
+  typescript: "TypeScript",
+  yaml: "YAML",
+  yml: "YAML",
+  zsh: "Shell",
+}
+
+function languageName(language: string): string {
+  return LANGUAGE_NAMES[language] ?? language.charAt(0).toUpperCase() + language.slice(1)
 }
 
 // A fenced block is always a <pre> around a <code>, so it is handled at the <pre>. Deciding at the
@@ -48,11 +99,18 @@ const INITIAL_COMPONENTS: Partial<Components> = {
       .join("")
       .replace(/\n$/, "")
 
+    const lines = text.split("\n").length
+
     return (
       <CodeBlock className="my-4">
-        <CodeBlockGroup className="border-border border-b py-2 pr-2 pl-4">
-          <div className="bg-primary/10 text-primary rounded px-2 py-1 text-xs font-medium">
-            {language}
+        <CodeBlockGroup className="border-border border-b px-4 py-2">
+          <div className="flex items-center gap-2">
+            <div className="bg-primary/10 text-primary rounded px-2 py-1 text-xs font-medium">
+              {languageName(language)}
+            </div>
+            <span className="text-muted-foreground text-sm">
+              {lines} {lines === 1 ? "line" : "lines"}
+            </span>
           </div>
           <CopyButton text={text} label="Copy Code" size="icon" className="h-8 w-8" />
         </CodeBlockGroup>

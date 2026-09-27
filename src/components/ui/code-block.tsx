@@ -31,31 +31,10 @@ export type CodeBlockCodeProps = {
   className?: string
 } & React.HTMLProps<HTMLDivElement>
 
-// Black and white highlighting: weight and gray carry the structure instead of hue
-const MONO_THEME: ThemeRegistration = {
-  name: "codepilot-mono",
-  type: "light",
-  colors: { "editor.background": "#ffffff", "editor.foreground": "#000000" },
-  tokenColors: [
-    {
-      scope: ["comment", "punctuation.definition.comment"],
-      settings: { foreground: "#767676", fontStyle: "italic" },
-    },
-    {
-      scope: ["keyword", "storage", "storage.type", "storage.modifier"],
-      settings: { foreground: "#000000", fontStyle: "bold" },
-    },
-    {
-      scope: ["string", "constant.numeric", "constant.language"],
-      settings: { foreground: "#4a4a4a" },
-    },
-  ],
-}
-
 function CodeBlockCode({
   code,
   language = "tsx",
-  theme = MONO_THEME,
+  theme = "github-dark",
   className,
   ...props
 }: CodeBlockCodeProps) {
@@ -82,7 +61,8 @@ function CodeBlockCode({
     className
   )
 
-  // SSR fallback: render plain code if not hydrated yet
+  // SSR fallback: render plain code if not hydrated yet. It takes GitHub Dark's own background
+  // and text colors, so the block does not flash white before the highlighter finishes.
   return highlightedHtml ? (
     <div
       className={classNames}
@@ -90,7 +70,10 @@ function CodeBlockCode({
       {...props}
     />
   ) : (
-    <div className={classNames} {...props}>
+    <div
+      className={cn(classNames, "[&>pre]:bg-[#24292e] [&>pre]:text-[#e1e4e8]")}
+      {...props}
+    >
       <pre>
         <code>{code}</code>
       </pre>
