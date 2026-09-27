@@ -17,6 +17,7 @@ One person: the owner, using it daily as a personal coding assistant while writi
 ## What Is Built
 
 - Ask the copilot a coding question in the browser and read the reply as it is written.
+- Dictate a question by voice instead of typing it, in a browser that supports speech input.
 - Pick what kind of help is wanted before asking: a general answer, an explanation, a fix, docstrings, a refactor, a review, an optimization, tests, a translation, or a generated artifact.
 - See the model's reasoning, collapsed by default, whenever the model provides it.
 - Generate study material: describe the material needed, and read it back as a formatted document that can be copied or downloaded as Markdown.
@@ -58,6 +59,7 @@ One person: the owner, using it daily as a personal coding assistant while writi
 
 - **Read:** the messages the owner types, including any pasted code.
 - **Sent:** those messages, with the earlier turns of the same conversation, go to Ollama Cloud, which runs the model. They leave the owner's machine.
+- **Voice:** a dictated question is turned into text by the browser's own speech service, which in Chrome and Edge sends the audio to Google or Microsoft. Nothing is recorded or stored by Zayn.
 - **Written:** each conversation's title, messages, and any reasoning the model returned, in the local `chat` database. Deleting a conversation removes all of it.
 - **Personal data:** none is required. The owner should not paste secrets or personal data into a message, because it is processed by a third party and kept in the local database.
 
