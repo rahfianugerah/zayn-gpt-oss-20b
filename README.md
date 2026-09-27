@@ -96,6 +96,8 @@ An unknown command, such as `/etc/hosts`, is sent as plain text. On an empty cha
 
 **Study material and flashcards have their own buttons under the box.** Press **Material** or **Flashcards**, describe what you need, and send; the button adds the command for you. Material comes back as a formatted document. Flashcards come back as a deck: click a card to see its answer, move with the arrows or the arrow keys, and shuffle or start over from the deck's header.
 
+**Press the microphone to dictate** instead of typing; what you say is added to the box, and pressing it again stops. It appears only in a browser with speech input, such as Chrome, Edge, or Safari.
+
 Rename a conversation by clicking its name above the chat, by double-clicking it in the sidebar, or from the menu beside it. Enter or the check button saves; Escape or the cross cancels.
 
 ## Configuration
@@ -123,7 +125,7 @@ Every variable the project reads. Names only; see `.env.example`.
 | Python environment | The `ai-project` conda environment | Outside the repository. Managed with conda by the owner |
 | Frontend build | `.next/`, `out/` | Gitignored. Produced by `npm run dev` and `npm run build` |
 
-Every message and the earlier turns of its conversation are sent to Ollama Cloud. Do not paste secrets or personal data into the chat.
+Every message and the earlier turns of its conversation are sent to Ollama Cloud. Dictation goes through the browser's own speech service, which in Chrome and Edge sends the audio to Google or Microsoft; Zayn keeps no audio. Do not paste or say secrets or personal data.
 
 ## Project Structure
 

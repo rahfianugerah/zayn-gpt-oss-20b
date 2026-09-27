@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUp, BookOpen, Layers, Loader2, Pencil, Slash, Square, User, X } from "lucide-react";
+import { ArrowUp, BookOpen, Layers, Loader2, Mic, MicOff, Pencil, Slash, User, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChatSidebar } from "@/components/chat-sidebar";
@@ -23,6 +23,7 @@ import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ui/r
 import { ScrollButton } from "@/components/ui/scroll-button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { SystemMessage } from "@/components/ui/system-message";
+import { useDictation } from "@/hooks/use-dictation";
 import {
   type ChatMessage,
   type ConversationSummary,
@@ -176,6 +177,7 @@ export function ChatApp() {
   }, []);
 
   const isMenuOpen = matches.length > 0;
+  const dictation = useDictation(prompt, changePrompt, setError);
 
   // Hides the menu until the text changes, so a typed / stays in the box without reopening it
   function closeMenu() {
@@ -263,6 +265,7 @@ export function ChatApp() {
     const replyId = `local-${chat.messages.length + 1}`;
     let answered = false;
 
+    dictation.cancel();
     setPrompt("");
     setMode(null);
     setError(null);
@@ -366,7 +369,7 @@ export function ChatApp() {
               scroller that the wheel falls through to at the end of the conversation. */}
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <ChatContainerRoot className="h-full">
-              <ChatContainerContent className="space-y-0 px-5 py-12">
+              <ChatContainerContent className="space-y-12 px-4 py-12">
                 {openingId ? (
                   <p role="status" className="text-muted-foreground flex items-center justify-center gap-2 text-sm">
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -489,8 +492,10 @@ export function ChatApp() {
                     aria-controls="command-menu"
                     aria-activedescendant={isMenuOpen ? `command-${matches[activeIndex].name}` : undefined}
                     placeholder={
-                      STUDY_MODES.find((study) => study.command === mode)?.placeholder ??
-                      `Ask ${PRODUCT_NAME}, or type / for commands`
+                      dictation.isListening
+                        ? "Listening..."
+                        : (STUDY_MODES.find((study) => study.command === mode)?.placeholder ??
+                          `Ask ${PRODUCT_NAME}, or type / for commands`)
                     }
                     onKeyDown={onPromptKeyDown}
                     className="min-h-11 pt-3 pl-4 text-base leading-[1.3] sm:text-base md:text-base"
@@ -521,30 +526,52 @@ export function ChatApp() {
                             <Button
                               variant={isActive ? "default" : "outline"}
                               aria-pressed={isActive}
-                              className="h-9 rounded-full px-3"
+                              aria-label={study.label}
+                              // Icon only on a phone, where the labels would not fit beside the others
+                              className="h-9 rounded-full px-3 max-sm:w-9 max-sm:px-0"
                               onClick={() => {
                                 setMode(isActive ? null : study.command);
                                 document.getElementById(PROMPT_ID)?.focus();
                               }}
                             >
                               <Icon size={16} />
-                              {study.label}
+                              <span className="max-sm:hidden">{study.label}</span>
                             </Button>
                           </PromptInputAction>
                         );
                       })}
                     </div>
-                    <PromptInputAction tooltip={isLoading ? "Stop generation" : "Send message"}>
-                      <Button
-                        size="icon"
-                        aria-label={isLoading ? "Stop generation" : "Send message"}
-                        disabled={!isLoading && !question.trim()}
-                        onClick={isLoading ? () => controllerRef.current?.abort() : send}
-                        className="size-9 rounded-full"
-                      >
-                        {isLoading ? <Square className="size-4 fill-current" /> : <ArrowUp size={18} />}
-                      </Button>
-                    </PromptInputAction>
+                    <div className="flex items-center gap-2">
+                      {dictation.isSupported && (
+                        <PromptInputAction tooltip={dictation.isListening ? "Stop dictation" : "Voice input"}>
+                          <Button
+                            variant={dictation.isListening ? "default" : "outline"}
+                            size="icon"
+                            aria-label={dictation.isListening ? "Stop Dictation" : "Voice Input"}
+                            aria-pressed={dictation.isListening}
+                            className="size-9 rounded-full"
+                            onClick={dictation.toggle}
+                          >
+                            {dictation.isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                          </Button>
+                        </PromptInputAction>
+                      )}
+                      <PromptInputAction tooltip={isLoading ? "Stop generation" : "Send message"}>
+                        <Button
+                          size="icon"
+                          aria-label={isLoading ? "Stop generation" : "Send message"}
+                          disabled={!isLoading && !question.trim()}
+                          onClick={isLoading ? () => controllerRef.current?.abort() : send}
+                          className="size-9 rounded-full"
+                        >
+                          {isLoading ? (
+                            <span className="bg-primary-foreground size-3 rounded-xs" />
+                          ) : (
+                            <ArrowUp size={18} />
+                          )}
+                        </Button>
+                      </PromptInputAction>
+                    </div>
                   </PromptInputActions>
                 </div>
               </PromptInput>
@@ -579,12 +606,12 @@ function ChatBubble({
       className={cn(
         // relative keeps the screen reader labels inside the scrolling list, not measured against
         // the box around it, where they stretched it to the full conversation height
-        "relative mx-auto flex w-full max-w-3xl flex-col gap-2 px-0 py-3 md:px-6",
+        "relative mx-auto flex w-full max-w-3xl flex-col gap-2 px-0 md:px-6",
         isAssistant ? "items-start" : "items-end",
       )}
     >
       <div className={cn("flex w-full gap-3", isAssistant ? "flex-row" : "flex-row-reverse")}>
-        <Avatar className="mt-0.5 size-7" aria-hidden="true">
+        <Avatar className="mt-0.5 size-7 shrink-0" aria-hidden="true">
           {isAssistant && <AvatarImage src={LOGO_SRC} alt="" />}
           <AvatarFallback
             className={cn("text-xs font-semibold", isAssistant && "bg-primary text-primary-foreground")}
