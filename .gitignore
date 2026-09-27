@@ -46,7 +46,6 @@ next-env.d.ts
 *.pyc
 __pycache__/
 .pytest_cache/
-.ruff_cache/
 
 # keys, credentials, and model weights
 *.key
