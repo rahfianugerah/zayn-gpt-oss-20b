@@ -20,6 +20,12 @@ from pydantic import ValidationError
 api = TestClient(main.app)
 
 
+@pytest.fixture(autouse=True)
+def fresh_limits(monkeypatch):
+    # Every test starts with empty counts, so the suite never trips its own rate limit
+    monkeypatch.setattr(main, "LIMITS", {"model": main.RateLimiter(20), "api": main.RateLimiter(120)})
+
+
 def chunk(content: str = "", thinking: str | None = None) -> SimpleNamespace:
     return SimpleNamespace(message=SimpleNamespace(content=content, thinking=thinking))
 
@@ -207,3 +213,26 @@ def test_a_search_that_matches_nothing_returns_nothing():
     page = search("zzqqxxwwvvyy")
     assert page["items"] == []
     assert page["total"] == 0
+
+
+def test_the_limiter_refuses_past_the_limit_and_says_when_to_retry():
+    limiter = main.RateLimiter(limit=2, window_seconds=60)
+    assert limiter.hit("client") is None
+    assert limiter.hit("client") is None
+    retry_after = limiter.hit("client")
+    assert retry_after is not None and 0 < retry_after <= 60
+    assert limiter.hit("another client") is None
+
+
+def test_the_model_route_answers_429_once_its_limit_is_spent(monkeypatch, conversation_id):
+    monkeypatch.setattr(main, "model_client", FakeModel([chunk("Hi")]))
+    monkeypatch.setattr(main, "LIMITS", {"model": main.RateLimiter(1), "api": main.RateLimiter(120)})
+    assert send(conversation_id, "First").status_code == 200
+
+    response = send(conversation_id, "Second")
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "RATE_LIMITED"
+    assert int(response.headers["Retry-After"]) > 0
+    # The refused question was never saved
+    contents = [m["content"] for m in api.get(f"/api/v1/conversations/{conversation_id}").json()["messages"]]
+    assert "Second" not in contents

@@ -1,9 +1,12 @@
 import itertools
 import json
 import logging
+import math
 import re
 import sys
+import time
 import uuid
+from collections import defaultdict, deque
 from datetime import datetime
 from typing import Literal
 
@@ -237,6 +240,52 @@ def error_response(status: int, code: str, message: str, detail: object = None) 
     )
 
 
+class RateLimiter:
+    """A sliding window of request times for each client."""
+
+    def __init__(self, limit: int, window_seconds: float = 60):
+        self.limit = limit
+        self.window = window_seconds
+        self.hits: dict[str, deque[float]] = defaultdict(deque)
+
+    def hit(self, client: str) -> float | None:
+        """Count a request, or return the seconds until the client may try again."""
+        now = time.monotonic()
+        hits = self.hits[client]
+        while hits and hits[0] <= now - self.window:
+            hits.popleft()
+        if len(hits) >= self.limit:
+            return hits[0] + self.window - now
+        hits.append(now)
+        return None
+
+
+# ponytail: counts live in this one process's memory, which fits one local server; move them to a
+# shared store such as Postgres if the API ever runs as several workers, or each keeps its own count
+LIMITS = {
+    # Only these requests spend the Ollama usage limit, so they are limited hardest
+    "model": RateLimiter(limit=20),
+    "api": RateLimiter(limit=120),
+}
+
+
+class RateLimited(Exception):
+    def __init__(self, limit: int, retry_after: float):
+        self.limit = limit
+        self.retry_after = retry_after
+
+
+def rate_limit(bucket: str):
+    # async, so the check runs on the event loop one request at a time and needs no lock
+    async def check(request: Request) -> None:
+        limiter = LIMITS[bucket]
+        retry_after = limiter.hit(request.client.host if request.client else "unknown")
+        if retry_after is not None:
+            raise RateLimited(limiter.limit, retry_after)
+
+    return Depends(check)
+
+
 def not_found() -> JSONResponse:
     return error_response(404, "CONVERSATION_NOT_FOUND", "Conversation does not exist")
 
@@ -265,6 +314,21 @@ async def validation_failed(_: Request, exc: RequestValidationError) -> JSONResp
     )
 
 
+@app.exception_handler(RateLimited)
+async def rate_limited(_: Request, exc: RateLimited) -> JSONResponse:
+    seconds = math.ceil(exc.retry_after)
+    response = error_response(
+        429,
+        "RATE_LIMITED",
+        f"Too many requests. Try again in {seconds} seconds",
+        {"retry_after": seconds, "limit_per_minute": exc.limit},
+    )
+    response.headers["Retry-After"] = str(seconds)
+    response.headers["X-RateLimit-Limit"] = str(exc.limit)
+    response.headers["X-RateLimit-Remaining"] = "0"
+    return response
+
+
 @app.exception_handler(HTTPException)
 async def http_failed(_: Request, exc: HTTPException) -> JSONResponse:
     return error_response(exc.status_code, "HTTP_ERROR", str(exc.detail))
@@ -275,7 +339,7 @@ def health() -> dict[str, str]:
     return {"status": "ok", "model": MODEL}
 
 
-@app.get("/api/v1/conversations", response_model=ConversationPage)
+@app.get("/api/v1/conversations", response_model=ConversationPage, dependencies=[rate_limit("api")])
 def list_conversations(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -305,7 +369,7 @@ def list_conversations(
     return {**page, "items": [], "total": 0}
 
 
-@app.post("/api/v1/conversations", response_model=ConversationOut, status_code=201)
+@app.post("/api/v1/conversations", response_model=ConversationOut, status_code=201, dependencies=[rate_limit("api")])
 def create_conversation(session: Session = Depends(get_session)):
     conversation = Conversation(title=NEW_CHAT_TITLE)
     session.add(conversation)
@@ -313,7 +377,7 @@ def create_conversation(session: Session = Depends(get_session)):
     return conversation
 
 
-@app.get("/api/v1/conversations/{conversation_id}", response_model=ConversationDetail)
+@app.get("/api/v1/conversations/{conversation_id}", response_model=ConversationDetail, dependencies=[rate_limit("api")])
 def get_conversation(conversation_id: uuid.UUID, session: Session = Depends(get_session)):
     conversation = session.get(Conversation, conversation_id)
     if conversation is None:
@@ -321,7 +385,7 @@ def get_conversation(conversation_id: uuid.UUID, session: Session = Depends(get_
     return ConversationDetail.model_validate(conversation)
 
 
-@app.patch("/api/v1/conversations/{conversation_id}", response_model=ConversationOut)
+@app.patch("/api/v1/conversations/{conversation_id}", response_model=ConversationOut, dependencies=[rate_limit("api")])
 def rename_conversation(
     conversation_id: uuid.UUID, body: ConversationRename, session: Session = Depends(get_session)
 ):
@@ -333,7 +397,7 @@ def rename_conversation(
     return conversation
 
 
-@app.delete("/api/v1/conversations/{conversation_id}", status_code=204)
+@app.delete("/api/v1/conversations/{conversation_id}", status_code=204, dependencies=[rate_limit("api")])
 def delete_conversation(conversation_id: uuid.UUID, session: Session = Depends(get_session)):
     deleted = session.execute(delete(Conversation).where(Conversation.id == conversation_id))
     session.commit()
@@ -343,7 +407,7 @@ def delete_conversation(conversation_id: uuid.UUID, session: Session = Depends(g
     return Response(status_code=204)
 
 
-@app.post("/api/v1/conversations/{conversation_id}/messages")
+@app.post("/api/v1/conversations/{conversation_id}/messages", dependencies=[rate_limit("model")])
 def create_message(
     conversation_id: uuid.UUID, body: MessageIn, session: Session = Depends(get_session)
 ):

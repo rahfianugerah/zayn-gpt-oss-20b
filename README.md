@@ -167,6 +167,7 @@ The branch shape is trunk: `main` only. The browser tab shows the product name a
 - **The sidebar lists the latest 100 conversations.** Older ones stay in the database but are not shown.
 - **A stopped reply keeps what had arrived.** Pressing stop saves the partial answer, and a reply stopped before any text arrived saves nothing.
 - **Reasoning appears only for a model that returns it.** `gpt-oss:20b` does; a model without thinking shows no Show Reasoning block.
+- **Zayn limits how fast it can be asked.** Sending a message is limited to 20 a minute and everything else to 120, so a stuck loop cannot spend the Ollama usage limit. Past it, a banner says how many seconds to wait. The counts live in the API's memory and reset when it restarts.
 - **Ollama Cloud usage limits apply.** A request past the limit, or with a wrong key, fails with a "model could not answer" banner, and the question goes back into the box.
 - **There is no sign-in.** Anyone who can reach port 8000 can read and delete conversations and spend the Ollama quota. The API is bound to `127.0.0.1` for that reason.
 - **The tests use the real local database.** They create and delete their own conversations and leave the rest alone.

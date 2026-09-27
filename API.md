@@ -153,6 +153,7 @@ The resource is the body, with no envelope.
 | `204` | No Content | Conversation deleted |
 | `404` | Not Found | The conversation does not exist, or the route does not |
 | `422` | Unprocessable Entity | Validation failure |
+| `429` | Too Many Requests | The client passed its rate limit |
 | `502` | Bad Gateway | Ollama Cloud refused or failed the request |
 
 ### Null and Empty Values
@@ -261,6 +262,7 @@ Notes:
 | :- | :- | :- |
 | Validation | `422` | Invalid input |
 | Not found | `404` | The conversation or the route does not exist |
+| Rate limit | `429` | Too many requests in the last minute |
 | Upstream | `502` | Ollama Cloud could not answer |
 
 ### Error Code Convention
@@ -271,6 +273,7 @@ Notes:
 VALIDATION_FAILED
 CONVERSATION_NOT_FOUND
 MODEL_UNAVAILABLE
+RATE_LIMITED
 STREAM_INTERRUPTED
 HTTP_ERROR
 ```
@@ -295,6 +298,7 @@ HTTP_ERROR
 
 | Status | Retry |
 | :- | :- |
+| `429` | Yes, after the seconds in `Retry-After`; nothing was saved |
 | `502` | Yes, after a moment; nothing was saved |
 | `4xx` | No; the request is wrong and will stay wrong |
 
@@ -333,9 +337,25 @@ Fixed: latest activity first, by `updated_at`.
 
 ### Rate Limit
 
-<code style="color: red">Not Used</code>
+Each client, by address, has its own sliding one-minute window per group:
 
-Ollama Cloud's own usage limit is the ceiling, and a request past it returns `502`.
+| Endpoint group | Limit | Window |
+| :- | :- | :- |
+| `POST api/v1/conversations/{conversation_id}/messages`, which calls the model | 20 | per minute |
+| Every other `api/v1` route | 120 | per minute |
+| `/health` | None | |
+
+A request past its limit is refused with `429` `RATE_LIMITED` before anything is saved or sent to the model. The counts live in the API's memory, so they reset when it restarts. Ollama Cloud's own usage limit still applies on top, and a request past it returns `502`.
+
+### Rate Limit Headers
+
+Sent with a `429`:
+
+```http
+Retry-After: 53
+X-RateLimit-Limit: 20
+X-RateLimit-Remaining: 0
+```
 
 ### Security Controls
 
