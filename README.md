@@ -5,13 +5,13 @@
 ![Next](https://img.shields.io/badge/Next-16-000000?logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)
-![Ollama](https://img.shields.io/badge/Ollama-Cloud-000000?logo=ollama&logoColor=white)
+![Ollama Cloud](https://img.shields.io/badge/Ollama_Cloud-gpt--oss:20b-000000?logo=ollama&logoColor=white)
 ![Status](https://img.shields.io/badge/Status-Active-2EA043)
 ![License](https://img.shields.io/badge/License-MIT-750014)
 
-A coding copilot in the browser, answered by a model on Ollama Cloud, with every conversation saved in PostgreSQL on this machine. **No model is downloaded or run locally.**
+Zayn is a coding copilot in the browser, answered by `gpt-oss:20b` on Ollama Cloud, with every conversation saved in PostgreSQL on this machine. **No model is downloaded or run locally.**
 
-It exists because running Qwen2.5-Coder-7B through Ollama on the owner's laptop was too heavy to keep loaded while working, so the copilot went unused. The product intent is in [PRD.md](PRD.md) and the endpoints are in [API.md](API.md).
+It exists so a capable coding assistant, study material, and flashcards are one browser tab away without loading a model onto the laptop. The product intent is in [PRD.md](PRD.md) and the endpoints are in [API.md](API.md).
 
 ## Table of Contents
 
@@ -22,8 +22,7 @@ It exists because running Qwen2.5-Coder-7B through Ollama on the owner's laptop 
 5. [Project Structure](#project-structure)
 6. [Development](#development)
 7. [Known Limitations](#known-limitations)
-8. [Deviations From the Standards](#deviations-from-the-standards)
-9. [License](#license)
+8. [License](#license)
 
 ## Setup
 
@@ -106,7 +105,7 @@ Every variable the project reads. Names only; see `.env.example`.
 | Variable | Required | Description |
 | :- | :- | :- |
 | `OLLAMA_API_KEY` | Yes | The Ollama Cloud key the API sends with every model request. Never reaches the browser |
-| `OLLAMA_MODEL` | Yes | The model Ollama Cloud runs, such as `gpt-oss:20b` or `kimi-k2.7-code`. No default |
+| `OLLAMA_MODEL` | Yes | The model Ollama Cloud runs. This project uses `gpt-oss:20b`. No default |
 | `DATABASE_URL` | Yes | The local PostgreSQL connection, `postgresql+psycopg://...@127.0.0.1:5432/chat` |
 | `CORS_ORIGINS` | No | Comma-separated browser origins allowed to call the API. Defaults to the website on port 3000 |
 | `NEXT_PUBLIC_COPILOT_URL` | No | The API origin the website calls, built into the page. Defaults to `http://127.0.0.1:8000` |
@@ -141,9 +140,9 @@ public/
   zayn.webp               a 512px crop of its face, the logo the page shows
 src/
   app/                    the one page, its layout, the favicon, and the black and white theme
-  components/             the chat, the sidebar, and the copy button
+  components/             the chat, the sidebar, the material card, the flashcard deck, and the title editor
   components/ui/          shadcn and prompt-kit components, owned and edited here
-  lib/                    the API client, the product name, and the command list
+  lib/                    the API client, the product name, the commands, and the flashcard parser
 ```
 
 ## Development
@@ -167,19 +166,7 @@ The branch shape is trunk: `main` only. The browser tab shows the product name a
 - **Ollama Cloud usage limits apply.** A request past the limit, or with a wrong key, fails with a "model could not answer" banner, and the question goes back into the box.
 - **There is no sign-in.** Anyone who can reach port 8000 can read and delete conversations and spend the Ollama quota. The API is bound to `127.0.0.1` for that reason.
 - **The tests use the real local database.** They create and delete their own conversations and leave the rest alone.
-
-## Deviations From the Standards
-
-1. **Next instead of React on Vite.** `stacks.rules.md` sets React 19 on Vite as the frontend. This uses Next 16 because the owner chose it. It is exported as static files, so it still ships as files with no Node server. The cost accepted: Next's build and conventions on top of React.
-2. **lucide icons instead of Tabler.** `uix.component.md` and `stacks.rules.md` set Tabler as the one icon set. The prompt-kit and shadcn components the owner chose are built on lucide, so lucide is the one set used throughout. The cost accepted: glyph names differ from the other projects.
-3. **prompt-kit's shapes instead of the two-radius scale.** `uix.component.md` and `button.component.md` set 8px and 16px radii and a border-only field focus. This keeps prompt-kit's round buttons, rounded input, and focus rings, because the owner asked for that look. The page's colors and type still follow the standard, with one exception the owner chose: code blocks use the GitHub Dark theme with full syntax color, where the standard allows no color beyond status.
-4. **No TanStack Query or axios.** `stacks.rules.md` starts every frontend on both. This app makes four small requests and one stream, and axios cannot read a stream in the browser. The cost accepted: no request cache.
-5. **The model is on Ollama Cloud, not Claude.** `stacks.rules.md` sets Claude through the `anthropic` SDK. The owner chose Ollama Cloud for an open model. The cost accepted: a third party processes every message.
-6. **One repository for the API and the website.** `repository.rules.md` requires separate `-backend` and `-frontend` repositories. This is a local tool with no deployment, so it stays together until it deploys. The cost accepted: split it before the first deployment.
-7. **The API connects as the `postgres` superuser.** `database.rules.md` asks for a least-privilege user. This follows the owner's local setup, and the startup check keeps it on this machine. The cost accepted: a bug in the API has full rights on the local server.
-8. **No authentication.** `security.rules.md` and `auth.rules.md` allow only the health route to be public. There is one user on one machine, and the API listens on `127.0.0.1` only.
-9. **One `requirements.txt`, with no `pyproject.toml`.** `stacks.rules.md` declares the Python version in `pyproject.toml` and keeps test tools apart from runtime packages. The owner keeps one requirements file per project, so pytest and its test client sit beside the runtime packages. The cost accepted: the Python version is stated here rather than enforced, and a production install would carry the test tools.
-10. **Scrollbars are hidden everywhere.** `scrollbar.component.md` keeps scrollbars visible, above all under content wider than its box. The owner asked for none. Scrolling still works by wheel, touch, and keyboard, and the chat keeps its scroll-to-latest button. The cost accepted: a code block wider than the reply gives no sign that it scrolls sideways; use Shift with the wheel, or a trackpad.
+- **There are no scrollbars.** A code block wider than the reply scrolls sideways with Shift and the wheel, or a trackpad, but nothing shows that it can.
 
 ## License
 

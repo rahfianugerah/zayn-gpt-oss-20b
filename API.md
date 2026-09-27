@@ -45,7 +45,7 @@ Website > CORS > Router > Validation > PostgreSQL and Ollama Cloud > Response
 
 <code style="color: red">Not Used</code>
 
-There is one user on one machine, and the API listens on `127.0.0.1` only. This is recorded as a deviation in the README.
+There is one user on one machine, and the API listens on `127.0.0.1` only.
 
 ### Public and Protected Endpoints
 

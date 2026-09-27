@@ -6,7 +6,7 @@
 
 ## Problem
 
-Zayn answered coding questions by running Qwen2.5-Coder-7B-Instruct on the owner's own machine. That meant downloading a 4.7 GB model, building it locally from the Modelfile, and keeping it loaded in memory while working. On the owner's hardware this is too heavy, so the copilot sat unused: every session started with a download or a model that competed with the editor for memory.
+Running a coding model on the owner's own machine meant downloading several gigabytes, building it locally from the Modelfile, and keeping it loaded in memory while working. On the owner's hardware this is too heavy, so the copilot sat unused: every session started with a download or a model that competed with the editor for memory.
 
 Every conversation was also lost on reload. An answer worth keeping had to be copied out by hand before closing the tab, and a question asked yesterday could not be picked up again today.
 
@@ -31,7 +31,6 @@ One person: the owner, using it daily as a personal coding assistant while writi
 ## What Is Not Built
 
 - **No local or offline model.** Running the model locally is the problem this change removes. The old local path is dropped rather than kept beside the cloud one.
-- **No Qwen model in this phase.** The owner chose Ollama Cloud on 2026-09-27, and Ollama Cloud serves no Qwen model. The copilot uses a model from Ollama Cloud's own catalog with Zayn's instructions from the Modelfile.
 - **No fine-tuned or custom model weights.** Nothing is trained.
 - **No accounts or sign-in.** One person uses it on their own machine.
 - **No sync between machines.** Conversations live in the database on the owner's machine and nowhere else.
@@ -49,7 +48,7 @@ One person: the owner, using it daily as a personal coding assistant while writi
 
 ## Constraints
 
-- The model runs on Ollama Cloud, as the owner decided.
+- The model is `gpt-oss:20b` on Ollama Cloud, as the owner decided, with Zayn's instructions from the Modelfile.
 - The access key never reaches the browser.
 - The access key and the database password are supplied by the owner by hand and are never read, printed, or committed by anyone else.
 - Conversations are stored only in the PostgreSQL server on the owner's own machine, in a database named `chat`. Never a cloud or remote database.
@@ -64,5 +63,4 @@ One person: the owner, using it daily as a personal coding assistant while writi
 
 ## Open Questions
 
-- Which Ollama Cloud model to use: `gpt-oss:20b`, the smallest and fastest, or `kimi-k2.7-code`, stronger at code and heavier on the usage limit? Owner to decide, per machine, without a code change. The example configuration starts on `gpt-oss:20b`.
 - Does the Ollama Cloud free usage limit cover daily use, or is a paid plan needed? Owner to decide after the first month of use.
