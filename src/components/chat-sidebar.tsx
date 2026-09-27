@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TitleEditor } from "@/components/title-editor";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -34,7 +35,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import type { ConversationSummary } from "@/lib/api";
-import { PRODUCT_NAME } from "@/lib/product";
+import { LOGO_SRC, PRODUCT_NAME } from "@/lib/product";
 
 const PERIODS = ["Today", "Yesterday", "Previous 7 Days", "Older"] as const;
 
@@ -82,12 +83,17 @@ export function ChatSidebar({
       <SidebarHeader className="px-4 py-4">
         <Link
           href="/"
-          className="text-base font-semibold tracking-tight"
+          className="flex items-center gap-2 text-base font-semibold tracking-tight"
           onClick={(event) => {
             event.preventDefault();
             choose(onNewChat);
           }}
         >
+          {/* Decorative: the name beside it already says which app this is */}
+          <Avatar className="size-7" aria-hidden="true">
+            <AvatarImage src={LOGO_SRC} alt="" />
+            <AvatarFallback className="text-xs">{PRODUCT_NAME[0]}</AvatarFallback>
+          </Avatar>
           {PRODUCT_NAME}
         </Link>
       </SidebarHeader>

@@ -132,8 +132,11 @@ server/
   db.py                   the conversations and messages tables
   migrations/             Alembic migrations
   test_main.py            the smoke test
+public/
+  zayn-gpt-oss-20b.png    the mascot at full size, kept as the source
+  zayn.webp               a 512px crop of its face, the logo the page shows
 src/
-  app/                    the one page, its layout, and the black and white theme
+  app/                    the one page, its layout, the favicon, and the black and white theme
   components/             the chat, the sidebar, and the copy button
   components/ui/          shadcn and prompt-kit components, owned and edited here
   lib/                    the API client, the product name, and the command list

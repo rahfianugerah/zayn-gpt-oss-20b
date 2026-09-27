@@ -1,5 +1,8 @@
 export const PRODUCT_NAME = "Zayn";
 
+// A 512px crop of the mascot's face from public/zayn-gpt-oss-20b.png, small enough for every avatar
+export const LOGO_SRC = "/zayn.webp";
+
 // The same names the server reads as slash commands, in server/main.py TASK_PROMPTS
 export const COMMANDS = [
   { name: "general", description: "Answer the question directly" },

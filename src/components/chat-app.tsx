@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { CopyButton } from "@/components/copy-button";
 import { TitleEditor } from "@/components/title-editor";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ChatContainerContent, ChatContainerRoot } from "@/components/ui/chat-container";
 import { Message, MessageAction, MessageActions, MessageContent } from "@/components/ui/message";
@@ -33,7 +33,7 @@ import {
   listConversations,
   streamReply,
 } from "@/lib/api";
-import { COMMANDS, PRODUCT_NAME, SUGGESTIONS, splitCommand } from "@/lib/product";
+import { COMMANDS, LOGO_SRC, PRODUCT_NAME, SUGGESTIONS, splitCommand } from "@/lib/product";
 import { cn } from "@/lib/utils";
 
 type Chat = { id: string | null; title: string; messages: ChatMessage[] };
@@ -332,6 +332,10 @@ export function ChatApp() {
                   </p>
                 ) : chat.messages.length === 0 ? (
                   <div className="mx-auto flex max-w-3xl flex-col items-center gap-2 pt-[18vh] text-center">
+                    <Avatar className="mb-2 size-20" aria-hidden="true">
+                      <AvatarImage src={LOGO_SRC} alt="" />
+                      <AvatarFallback className="text-2xl font-semibold">{PRODUCT_NAME[0]}</AvatarFallback>
+                    </Avatar>
                     <h2 className="text-2xl font-bold">How can I help you today?</h2>
                     <p className="text-muted-foreground text-sm">
                       {model ? `Running ${model} on Ollama Cloud. ` : ""}Type / for commands.
@@ -488,6 +492,7 @@ function ChatBubble({
     >
       <div className={cn("flex w-full gap-3", isAssistant ? "flex-row" : "flex-row-reverse")}>
         <Avatar className="mt-0.5 size-7" aria-hidden="true">
+          {isAssistant && <AvatarImage src={LOGO_SRC} alt="" />}
           <AvatarFallback
             className={cn("text-xs font-semibold", isAssistant && "bg-primary text-primary-foreground")}
           >
