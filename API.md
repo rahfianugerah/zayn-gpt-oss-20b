@@ -361,7 +361,7 @@ X-RateLimit-Remaining: 0
 
 | Control | Implementation |
 | :- | :- |
-| Transport | Loopback only when started with `--host 127.0.0.1`, as the README shows |
+| Transport | Loopback only: `main.py` binds the API to `127.0.0.1` |
 | Input validation | Typed model at the boundary, unexpected fields rejected |
 | Injection | ORM queries only |
 | Secrets | Never in a response, a log, or an error; settings errors hide their inputs |

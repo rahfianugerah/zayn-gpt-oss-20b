@@ -35,7 +35,7 @@ conda activate ai-project
 pip install -r requirements.txt
 ```
 
-**Run every backend command below inside the activated `ai-project` environment.** Outside it, `pip` installs into a different interpreter and PowerShell answers `The term 'uvicorn' is not recognized`.
+**Run every backend command below inside the activated `ai-project` environment.** Outside it, `pip` installs into a different interpreter and `python main.py` stops with `No module named 'uvicorn'`.
 
 **2. Configuration.** Copy the template and fill it in by hand.
 
@@ -66,8 +66,10 @@ Start the API, then the website, each in its own terminal from the repository ro
 
 ```bash
 conda activate ai-project
-uvicorn main:app --app-dir server --host 127.0.0.1 --port 8000 --reload
+python main.py --reload
 ```
+
+`main.py` starts the API in `server/` on `http://127.0.0.1:8000`, the address the website calls. `--reload` restarts it whenever the backend's code changes; leave it out to run without restarting.
 
 ```bash
 npm run dev
@@ -132,6 +134,7 @@ Every message and the earlier turns of its conversation are sent to Ollama Cloud
 ## Project Structure
 
 ```text
+main.py                   starts the API: python main.py --reload
 Modelfile                 the system prompt and sampling, read by the API
 server/
   main.py                 routes, slash commands, and the Ollama Cloud stream
